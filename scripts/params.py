@@ -77,12 +77,12 @@ class arm:
     def __transfer_matrix(self, i):
         '''
         Transfer Matrix
-            i-1 
+            i 
                 T 
-            i
+            i+1
         '''
-        i -= 1
         T = np.zeros([4,4])
+        print(self.joints[i].theta)
         T[0,0] = np.cos(self.joints[i].theta)
         T[0,1] = -1 * np.sin(self.joints[i].theta)
         T[0,2] = 0
@@ -111,7 +111,6 @@ class arm:
             Base
                 T
             Tool
-        
         '''
         result = np.identity(4)
         for i in range(DoF):
@@ -131,8 +130,8 @@ class arm:
 
 if __name__ == '__main__':
     arm = arm()
-    arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
+    # arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
     arm.set_target_theta([0,0,0,0,0,0])  # ZERO
-    arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
+    # arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
     T = arm.T_build(is_print=True)
 

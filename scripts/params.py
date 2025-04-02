@@ -52,7 +52,8 @@ class arm:
         for _ in range(DoF):
             self.joints.append(joint(0,0,0,0))
 
-        self.__ALPHA = [alpha_0, alpha_1, alpha_2, alpha_3, alpha_4, alpha_5]
+        # self.__ALPHA = [alpha_0, alpha_1, alpha_2, alpha_3, alpha_4, alpha_5]
+        self.__ALPHA = [0, 0, 0, 0, 0, 0]
         self.__A = [a_0, a_1, a_2, a_3, a_4, a_5]
         self.__D = [d_1, d_2, d_3, d_4, d_5, d_6]
 
@@ -73,10 +74,34 @@ class arm:
         for i in range(DoF):
             print(self.joints[i].alpha, self.joints[i].a, self.joints[i].theta, self.joints[i].d)
 
+    def transfer_matrix_i_to_i_minus_1(self, i):
+        T = np.zeros([4,4])
+        T[0,0] = np.cos(self.joints[i].theta)
+        T[0,1] = -1 * np.sin(self.joints[i].theta)
+        T[0,2] = 0
+        T[0,3] = self.joints[i].a
 
+        T[1,0] = np.cos(self.joints[i].alpha) * np.sin(self.joints[i].theta)
+        T[1,1] = np.cos(self.joints[i].theta) * np.cos(self.joints[i].alpha)
+        T[1,2] = -1 * np.sin(self.joints[i].alpha)
+        T[1,3] = -1 * np.sin(self.joints[i].alpha) * self.joints[i].d
+
+        T[2,0] = np.sin(self.joints[i].alpha) * np.sin(self.joints[i].theta)
+        T[2,1] = np.cos(self.joints[i].theta) * np.sin(self.joints[i].alpha)
+        T[2,2] = np.cos(self.joints[i].alpha)
+        T[2,3] = np.cos(self.joints[i].alpha) * self.joints[i].d
+
+        T[3,0] = 0
+        T[3,1] = 0
+        T[3,2] = 0
+        T[3,3] = 1
+
+        return T
+    
 
 if __name__ == '__main__':
     arm = arm()
-    arm.set_target_theta([1,2,3,4,5,6])
-    arm.print_params()
+    arm.set_target_theta([np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2])
+    t = arm.transfer_matrix_i_to_i_minus_1(1)
+    print(t)
 

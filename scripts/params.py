@@ -18,7 +18,7 @@ d_4 = 245
 
 alpha_4 = np.pi / 2
 a_4 = 0
-d_5 = 28.5
+d_5 = 57
 
 alpha_5 = 0
 a_5 = 0
@@ -113,6 +113,7 @@ class arm:
 
 if __name__ == '__main__':
     arm = arm()
-    arm.set_target_theta([np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2])
-    print(arm.T_build)
+    arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
+    T = arm.T_build()
+    print(T)
 

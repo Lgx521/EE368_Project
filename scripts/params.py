@@ -134,8 +134,8 @@ class arm:
 if __name__ == '__main__':
     arm = arm()
     # arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
-    arm.set_target_theta([0,0,0,0,0,0])  # ZERO
-    # arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
+    # arm.set_target_theta([0,0,0,0,0,0])  # ZERO
+    arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
 
 
     T = arm.T_build(is_print=True)

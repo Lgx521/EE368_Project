@@ -73,13 +73,14 @@ class arm:
         for i in range(DoF):
             print(self.joints[i].alpha, self.joints[i].a, self.joints[i].theta, self.joints[i].d)
 
-    def transfer_matrix(self, i):
+    def __transfer_matrix(self, i):
         '''
         Transfer Matrix
             i-1 
                 T 
             i
         '''
+        i -= 1
         T = np.zeros([4,4])
         T[0,0] = np.cos(self.joints[i].theta)
         T[0,1] = -1 * np.sin(self.joints[i].theta)
@@ -103,10 +104,15 @@ class arm:
 
         return T
     
+    def T_build(self):
+        result = np.identity(4)
+        for i in range(DoF):
+            result = result @ self.__transfer_matrix(i)
+        return result
+
 
 if __name__ == '__main__':
     arm = arm()
     arm.set_target_theta([np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2,np.pi/2])
-    t = arm.transfer_matrix_i_to_i_minus_1(1)
-    print(t)
+    print(arm.T_build)
 

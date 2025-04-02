@@ -1,28 +1,5 @@
 import numpy as np
 
-# alpha_0 = 0
-# a_0 = 0
-# d_1 = 243.3
-
-# alpha_1 = np.pi / 2
-# a_1 = 0
-# d_2 = 0
-
-# alpha_2 = np.pi
-# a_2 = 280
-# d_3 = -10
-
-# alpha_3 = np.pi / 2
-# a_3 = 0
-# d_4 = 245
-
-# alpha_4 = np.pi / 2
-# a_4 = 0
-# d_5 = 57
-
-# alpha_5 = 0
-# a_5 = 0
-# d_6 = 235
 
 alpha_0 = 0
 a_0 = 0
@@ -71,7 +48,9 @@ class joint:
         
 
 class arm:
-    def __init__(self):
+    def __init__(self, Dof = 6):
+        global DoF
+        DoF = Dof
         self.joints = []
         for _ in range(DoF):
             self.joints.append(joint(0,0,0,0))
@@ -79,6 +58,7 @@ class arm:
         self.__ALPHA = [alpha_0, alpha_1, alpha_2, alpha_3, alpha_4, alpha_5]
         self.__A = [a_0, a_1, a_2, a_3, a_4, a_5]
         self.__D = [d_1, d_2, d_3, d_4, d_5, d_6]
+        self.__Theta_initial = [0, np.pi/2, np.pi/2, np.pi/2, np.pi, np.pi/2]
 
         self.__set_other_params(ALPHA=self.__ALPHA, A=self.__A, D=self.__D)
 
@@ -86,7 +66,7 @@ class arm:
     def set_target_theta(self, THETA, is_Deg=False):
         factor = np.pi / 180 if is_Deg else 1
         for i in range(DoF):
-            self.joints[i].set_theta(THETA[i]*factor)
+            self.joints[i].set_theta(THETA[i]*factor + self.__Theta_initial[i])
 
     def __set_other_params(self, ALPHA, A, D):
         for i in range(DoF):
@@ -154,10 +134,9 @@ class arm:
 if __name__ == '__main__':
     arm = arm()
     # arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
-    # arm.set_target_theta([0,0,0,0,0,0])  # ZERO
+    arm.set_target_theta([0,0,0,0,0,0])  # ZERO
     # arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
 
-    arm.set_target_theta([0,90,90,90,180,90],is_Deg=True) # Vertical
 
     T = arm.T_build(is_print=True)
 

@@ -128,6 +128,7 @@ class arm:
                 print()
                 for j in range(4):
                     print(str(T[i][j])+'\t', end='')
+            print()
         return result
 
 

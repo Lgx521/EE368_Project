@@ -1,16 +1,40 @@
 import numpy as np
 
+# alpha_0 = 0
+# a_0 = 0
+# d_1 = 243.3
+
+# alpha_1 = np.pi / 2
+# a_1 = 0
+# d_2 = 0
+
+# alpha_2 = np.pi
+# a_2 = 280
+# d_3 = -10
+
+# alpha_3 = np.pi / 2
+# a_3 = 0
+# d_4 = 245
+
+# alpha_4 = np.pi / 2
+# a_4 = 0
+# d_5 = 57
+
+# alpha_5 = 0
+# a_5 = 0
+# d_6 = 235
+
 alpha_0 = 0
 a_0 = 0
 d_1 = 243.3
 
 alpha_1 = np.pi / 2
 a_1 = 0
-d_2 = 0
+d_2 = 30
 
 alpha_2 = np.pi
 a_2 = 280
-d_3 = -10
+d_3 = 20
 
 alpha_3 = np.pi / 2
 a_3 = 0
@@ -20,7 +44,7 @@ alpha_4 = np.pi / 2
 a_4 = 0
 d_5 = 57
 
-alpha_5 = 0
+alpha_5 = np.pi / 2
 a_5 = 0
 d_6 = 235
 
@@ -82,7 +106,6 @@ class arm:
             i+1
         '''
         T = np.zeros([4,4])
-        print(self.joints[i].theta)
         T[0,0] = np.cos(self.joints[i].theta)
         T[0,1] = -1 * np.sin(self.joints[i].theta)
         T[0,2] = 0
@@ -114,7 +137,7 @@ class arm:
         '''
         result = np.identity(4)
         for i in range(DoF):
-            result = result @ self.__transfer_matrix(i)
+            result = self.__transfer_matrix(DoF - i - 1) @ result
 
         if is_print:
             T = list(result)
@@ -131,7 +154,10 @@ class arm:
 if __name__ == '__main__':
     arm = arm()
     # arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
-    arm.set_target_theta([0,0,0,0,0,0])  # ZERO
+    # arm.set_target_theta([0,0,0,0,0,0])  # ZERO
     # arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
+
+    arm.set_target_theta([0,90,90,90,180,90],is_Deg=True) # Vertical
+
     T = arm.T_build(is_print=True)
 

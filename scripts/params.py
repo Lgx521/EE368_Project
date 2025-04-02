@@ -132,10 +132,15 @@ class arm:
 
 
 if __name__ == '__main__':
+    ZERO = [0,0,0,0,0,0]
+    HOME = [0,345,75,0,300,0]
+    RETRACT = [357, 21, 150, 272, 320, 273]
+    PACKAGING = [270, 148, 148, 270, 140, 0]
+    PICK = [20.5, 313.5, 100, 265.5, 327, 57]
+
     arm = arm()
-    # arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
-    # arm.set_target_theta([0,0,0,0,0,0])  # ZERO
-    arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
+
+    arm.set_target_theta(PACKAGING, is_Deg=True)
 
 
     T = arm.T_build(is_print=True)

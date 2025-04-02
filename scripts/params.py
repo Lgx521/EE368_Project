@@ -2,27 +2,27 @@ import numpy as np
 
 alpha_0 = 0
 a_0 = 0
-d_1 = 0
+d_1 = 243.3
 
 alpha_1 = np.pi / 2
 a_1 = 0
-d_2 = 243.3
+d_2 = 0
 
 alpha_2 = np.pi
-a_2 = 0
-d_3 = 30
+a_2 = 280
+d_3 = -10
 
-alpha_3 = -1*np.pi / 2
-a_3 = 280
-d_4 = 20
+alpha_3 = np.pi / 2
+a_3 = 0
+d_4 = 245
 
 alpha_4 = np.pi / 2
 a_4 = 0
-d_5 = 245
+d_5 = 28.5
 
-alpha_5 = -1*np.pi / 2
+alpha_5 = 0
 a_5 = 0
-d_6 = 57
+d_6 = 235
 
 DoF = 6
 

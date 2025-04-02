@@ -59,9 +59,12 @@ class arm:
         self.__set_other_params(ALPHA=self.__ALPHA, A=self.__A, D=self.__D)
 
 
-    def set_target_theta(self, THETA):
+    def set_target_theta(self, THETA, is_Deg=False):
+        factor = 1
         for i in range(DoF):
-            self.joints[i].set_theta(THETA[i])
+            if is_Deg:
+                factor = np.pi / 180
+            self.joints[i].set_theta(THETA[i]*factor)
 
     def __set_other_params(self, ALPHA, A, D):
         for i in range(DoF):
@@ -104,16 +107,34 @@ class arm:
 
         return T
     
-    def T_build(self):
+    def T_build(self, is_print = False):
+        '''
+        The Tool to Base transfer matrix
+            Base
+                T
+            Tool
+        
+        '''
         result = np.identity(4)
         for i in range(DoF):
             result = result @ self.__transfer_matrix(i)
+
+        if is_print:
+            T = list(result)
+            for i in range(4):
+                for j in range(4):
+                    T[i][j] = round(float(T[i][j]),3)
+            for i in range(4):
+                print()
+                for j in range(4):
+                    print(str(T[i][j])+'\t', end='')
         return result
 
 
 if __name__ == '__main__':
     arm = arm()
     arm.set_target_theta([0,np.pi/2, np.pi/2, np.pi/2, 0, 0])  # Initial theta array
-    T = arm.T_build()
-    print(T)
+    arm.set_target_theta([0,0,0,0,0,0])  # ZERO
+    arm.set_target_theta([0,345,75,0,300,0], is_Deg=True)  # HOME
+    T = arm.T_build(True)
 

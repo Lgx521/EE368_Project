@@ -1,4 +1,4 @@
 # EE368 Course project 1
 
-This is a calculator written by android studio.  
-Fundamental calculator function is achieved.
+This is the course project of EE368: `Robotics: Motion and Control`'s code space
+The branches represents for different projects.

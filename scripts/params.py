@@ -52,8 +52,7 @@ class arm:
         for _ in range(DoF):
             self.joints.append(joint(0,0,0,0))
 
-        # self.__ALPHA = [alpha_0, alpha_1, alpha_2, alpha_3, alpha_4, alpha_5]
-        self.__ALPHA = [0, 0, 0, 0, 0, 0]
+        self.__ALPHA = [alpha_0, alpha_1, alpha_2, alpha_3, alpha_4, alpha_5]
         self.__A = [a_0, a_1, a_2, a_3, a_4, a_5]
         self.__D = [d_1, d_2, d_3, d_4, d_5, d_6]
 
@@ -74,7 +73,13 @@ class arm:
         for i in range(DoF):
             print(self.joints[i].alpha, self.joints[i].a, self.joints[i].theta, self.joints[i].d)
 
-    def transfer_matrix_i_to_i_minus_1(self, i):
+    def transfer_matrix(self, i):
+        '''
+        Transfer Matrix
+            i-1 
+                T 
+            i
+        '''
         T = np.zeros([4,4])
         T[0,0] = np.cos(self.joints[i].theta)
         T[0,1] = -1 * np.sin(self.joints[i].theta)

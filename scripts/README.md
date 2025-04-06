@@ -1,6 +1,6 @@
 ## The Axis is defined as follows
 
-![Axes](/scripts/res/Axes_define.png)
+![Axes](./res/Axes_define.png)
 
 ---
 ### DH Table

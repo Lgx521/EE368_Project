@@ -59,6 +59,7 @@ class arm:
         self.__A = [a_0, a_1, a_2, a_3, a_4, a_5]
         self.__D = [d_1, d_2, d_3, d_4, d_5, d_6]
         self.__Theta_initial = [0, np.pi/2, np.pi/2, np.pi/2, np.pi, np.pi/2]
+        
 
         self.__set_other_params(ALPHA=self.__ALPHA, A=self.__A, D=self.__D)
 
@@ -141,7 +142,8 @@ if __name__ == '__main__':
 
     arm = arm()
 
-    arm.set_target_theta(PACKAGING, is_Deg=True)
+    arm.set_target_theta(ZERO, is_Deg=True)
+
 
 
     T = arm.T_build(is_print=True)

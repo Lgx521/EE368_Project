@@ -341,6 +341,6 @@ if __name__ == "__main__":
         # print(f"tool torque (tx,ty,tz): {np.round(tool_force[3:6], 3)}") # 可以取消注释以打印力矩
         print("-" * 20) # 打印分隔线
 
-        # 控制循环频率 (可选，如果需要)
+        # 控制循环频率
         # rate = rospy.Rate(10) # 10 Hz
         # rate.sleep()

@@ -1,5 +1,4 @@
 # 导入必要的库
-import math  # 用于数学计算，如三角函数
 import numpy as np # 用于数值计算，特别是矩阵和向量操作
 import rospy # ROS Python 客户端库，用于与 ROS 系统交互
 from sensor_msgs.msg import JointState # ROS 标准消息类型，用于表示机器人的关节状态
@@ -35,10 +34,10 @@ class Link:
         theta = theta + self.dh_params_[3]
 
         # 预计算三角函数值，提高效率
-        st = math.sin(theta)
-        ct = math.cos(theta)
-        sa = math.sin(alpha)
-        ca = math.cos(alpha)
+        st = np.sin(theta)
+        ct = np.cos(theta)
+        sa = np.sin(alpha)
+        ca = np.cos(alpha)
 
         # 构建标准的 DH 变换矩阵
         # T = Rot(Z, theta) * Trans(Z, d) * Trans(X, a) * Rot(X, alpha)
@@ -141,31 +140,31 @@ class NLinkArm:
 
         # 代码中的实现方式略有不同，但目标是求解 ZYZ 欧拉角
         # 计算 alpha (绕 Z 轴的第一个旋转角)
-        alpha = math.atan2(trans[1, 2], trans[0, 2]) # atan2(r23, r13)
+        alpha = np.atan2(trans[1, 2], trans[0, 2]) # atan2(r23, r13)
 
         # 这部分逻辑试图将 alpha 限制在 [-pi/2, pi/2] 内，这对于标准的 ZYZ 定义可能不是必须的，
         # 并且可能在某些情况下引入错误。标准的 atan2 结果范围是 [-pi, pi]。
         # 保留原始逻辑，但需注意其可能的影响。
-        if not (-math.pi / 2 <= alpha <= math.pi / 2):
-            alpha = math.atan2(trans[1][2], trans[0][2]) + math.pi
-        if not (-math.pi / 2 <= alpha <= math.pi / 2):
-            alpha = math.atan2(trans[1][2], trans[0][2]) - math.pi
+        if not (-np.pi / 2 <= alpha <= np.pi / 2):
+            alpha = np.atan2(trans[1][2], trans[0][2]) + np.pi
+        if not (-np.pi / 2 <= alpha <= np.pi / 2):
+            alpha = np.atan2(trans[1][2], trans[0][2]) - np.pi
 
         # 计算 beta (绕新的 Y' 轴的旋转角)
         # beta = atan2(r13*cos(alpha) + r23*sin(alpha), r33)
         # 因为 cos(alpha) = r13 / sqrt(r13^2+r23^2) and sin(alpha) = r23 / sqrt(r13^2+r23^2)
         # 所以 r13*cos(alpha) + r23*sin(alpha) = (r13^2 + r23^2) / sqrt(r13^2+r23^2) = sqrt(r13^2+r23^2)
         # 这与常用公式 atan2(sqrt(r13^2 + r23^2), r33) 等价
-        beta = math.atan2(
-            trans[0][2] * math.cos(alpha) + trans[1][2] * math.sin(alpha),
+        beta = np.atan2(
+            trans[0][2] * np.cos(alpha) + trans[1][2] * np.sin(alpha),
             trans[2][2])
 
         # 计算 gamma (绕最终的 Z'' 轴的旋转角)
         # gamma = atan2(-r11*sin(alpha) + r21*cos(alpha), -r12*sin(alpha) + r22*cos(alpha))
         # 这对应于 atan2(r32, -r31)
-        gamma = math.atan2(
-            -trans[0][0] * math.sin(alpha) + trans[1][0] * math.cos(alpha),
-            -trans[0][1] * math.sin(alpha) + trans[1][1] * math.cos(alpha))
+        gamma = np.atan2(
+            -trans[0][0] * np.sin(alpha) + trans[1][0] * np.cos(alpha),
+            -trans[0][1] * np.sin(alpha) + trans[1][1] * np.cos(alpha))
 
         return alpha, beta, gamma # 返回计算得到的三个欧拉角
 
@@ -199,9 +198,9 @@ class NLinkArm:
             # 5. 计算将欧拉角速率映射到笛卡尔角速度的变换矩阵 K_zyz (或称 T_e, B)
             # omega = K_zyz * [alpha_dot, beta_dot, gamma_dot]
             K_zyz = np.array(
-                [[0, -math.sin(alpha), math.cos(alpha) * math.sin(beta)],
-                 [0,  math.cos(alpha), math.sin(alpha) * math.sin(beta)],
-                 [1,  0,              math.cos(beta)]])
+                [[0, -np.sin(alpha), np.cos(alpha) * np.sin(beta)],
+                 [0,  np.cos(alpha), np.sin(alpha) * np.sin(beta)],
+                 [1,  0,              np.cos(beta)]])
 
             # 6. 构建 6x6 变换矩阵 K_alpha，用于将位姿误差 [dx, dy, dz, d_alpha, d_beta, d_gamma]
             #    近似转换为期望的笛卡尔速度 [vx, vy, vz, wx, wy, wz]。
@@ -273,11 +272,11 @@ if __name__ == "__main__":
     # 单位：角度为弧度 (rad)，长度为米 (m)
     # 注意：这里的 theta_offset 可能包含了为了匹配 URDF 或实际机器人零位而进行的调整
     dh_params_list = np.array([[0,         0,          243.3/1000, 0],               # Link 1
-                               [math.pi/2, 0,          10/1000,    math.pi/2],     # Link 2 (+pi/2 offset)
-                               [math.pi,   280/1000,   0,          math.pi/2],     # Link 3 (+pi/2 offset)
-                               [math.pi/2, 0,          245/1000,   math.pi/2],     # Link 4 (+pi/2 offset)
-                               [math.pi/2, 0,          57/1000,    0],               # Link 5
-                               [-math.pi/2,0,          235/1000,   -math.pi/2]])    # Link 6 (-pi/2 offset)
+                               [np.pi/2, 0,          10/1000,    np.pi/2],     # Link 2 (+pi/2 offset)
+                               [np.pi,   280/1000,   0,          np.pi/2],     # Link 3 (+pi/2 offset)
+                               [np.pi/2, 0,          245/1000,   np.pi/2],     # Link 4 (+pi/2 offset)
+                               [np.pi/2, 0,          57/1000,    0],               # Link 5
+                               [-np.pi/2,0,          235/1000,   -np.pi/2]])    # Link 6 (-pi/2 offset)
 
     # 使用定义的 DH 参数创建 NLinkArm 对象实例
     gen3_lite = NLinkArm(dh_params_list)

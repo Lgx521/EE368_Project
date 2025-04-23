@@ -3,6 +3,7 @@ import numpy as np # 用于数值计算，特别是矩阵和向量操作
 import rospy # ROS Python 客户端库，用于与 ROS 系统交互
 from sensor_msgs.msg import JointState # ROS 标准消息类型，用于表示机器人的关节状态
 from geometry_msgs.msg import Point # ROS 标准消息类型，用于表示三维空间中的点（这里用来发布位置、速度、力）
+import math
 
 # 定义 Link 类，代表机械臂的单个连杆
 class Link:
@@ -140,29 +141,29 @@ class NLinkArm:
 
         # 代码中的实现方式略有不同，但目标是求解 ZYZ 欧拉角
         # 计算 alpha (绕 Z 轴的第一个旋转角)
-        alpha = np.atan2(trans[1, 2], trans[0, 2]) # atan2(r23, r13)
+        alpha = math.atan2(trans[1, 2], trans[0, 2]) # atan2(r23, r13)
 
         # 这部分逻辑试图将 alpha 限制在 [-pi/2, pi/2] 内，这对于标准的 ZYZ 定义可能不是必须的，
         # 并且可能在某些情况下引入错误。标准的 atan2 结果范围是 [-pi, pi]。
         # 保留原始逻辑，但需注意其可能的影响。
         if not (-np.pi / 2 <= alpha <= np.pi / 2):
-            alpha = np.atan2(trans[1][2], trans[0][2]) + np.pi
+            alpha = math.atan2(trans[1][2], trans[0][2]) + np.pi
         if not (-np.pi / 2 <= alpha <= np.pi / 2):
-            alpha = np.atan2(trans[1][2], trans[0][2]) - np.pi
+            alpha = math.atan2(trans[1][2], trans[0][2]) - np.pi
 
         # 计算 beta (绕新的 Y' 轴的旋转角)
         # beta = atan2(r13*cos(alpha) + r23*sin(alpha), r33)
         # 因为 cos(alpha) = r13 / sqrt(r13^2+r23^2) and sin(alpha) = r23 / sqrt(r13^2+r23^2)
         # 所以 r13*cos(alpha) + r23*sin(alpha) = (r13^2 + r23^2) / sqrt(r13^2+r23^2) = sqrt(r13^2+r23^2)
         # 这与常用公式 atan2(sqrt(r13^2 + r23^2), r33) 等价
-        beta = np.atan2(
+        beta = math.atan2(
             trans[0][2] * np.cos(alpha) + trans[1][2] * np.sin(alpha),
             trans[2][2])
 
         # 计算 gamma (绕最终的 Z'' 轴的旋转角)
         # gamma = atan2(-r11*sin(alpha) + r21*cos(alpha), -r12*sin(alpha) + r22*cos(alpha))
         # 这对应于 atan2(r32, -r31)
-        gamma = np.atan2(
+        gamma = math.atan2(
             -trans[0][0] * np.sin(alpha) + trans[1][0] * np.cos(alpha),
             -trans[0][1] * np.sin(alpha) + trans[1][1] * np.cos(alpha))
 

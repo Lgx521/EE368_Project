@@ -20,5 +20,6 @@ The final course project of `EE368`.
 2. Use `pyrealsense2` module in python, distribute raw image to ros nodes for the CNN visual network
 3. Use `OpenCV` module to do distortion removal and ArUco sign recogonition  
 剩下的就是标定位置什么的，这个需要装好相机之后现场测量
+[这里是CSDN的一个博客，如何使用pyrealsense2获得相机内参等等信息](https://blog.csdn.net/Dontla/article/details/102644909)
 
 ### Control: How to move

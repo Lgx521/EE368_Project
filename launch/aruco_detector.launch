@@ -1,25 +1,51 @@
 <launch>
-    <node pkg="ee368_project" type="aruco_detector_node.py" name="aruco_detector_node" output="screen">
-        <!-- RealSense Camera Parameters -->
-        <param name="color_width" value="1280"/>
-        <param name="color_height" value="720"/>
-        <param name="color_fps" value="30"/>
-        
-        <!-- ArUco Parameters -->
-        <param name="marker_size" value="0.05"/> <!-- Marker side length in meters (e.g., 3.5 cm) -->
-        <param name="aruco_dictionary_name" value="DICT_6X6_250"/>
-        <!-- Options: DICT_4X4_50, DICT_4X4_100, DICT_4X4_250, DICT_4X4_1000,
+    <!-- ArUco marker's actual side length in meters -->
+    <arg name="marker_size" default="0.05"/> <!-- Example: 3.5 cm -->
+
+    <!-- Name of the ArUco dictionary to use (must match a cv2.aruco.DICT_* constant) -->
+    <arg name="aruco_dictionary_name" default="DICT_6X6_250"/>
+            <!-- Options: DICT_4X4_50, DICT_4X4_100, DICT_4X4_250, DICT_4X4_1000,
                       DICT_5X5_50, DICT_5X5_100, DICT_5X5_250, DICT_5X5_1000,
                       DICT_6X6_50, DICT_6X6_100, DICT_6X6_250, DICT_6X6_1000,
                       DICT_7X7_50, DICT_7X7_100, DICT_7X7_250, DICT_7X7_1000,
                       DICT_ARUCO_ORIGINAL, DICT_APRILTAG_16h5, DICT_APRILTAG_25h9,
                       DICT_APRILTAG_36h10, DICT_APRILTAG_36h11 -->
+
+    <!-- Whether to show the OpenCV debug window with detected markers -->
+    <arg name="show_cv_window" default="true"/>
+
+    <!-- RealSense color camera stream configuration -->
+    <arg name="color_width" default="1280"/>      <!-- Width of the color image -->
+    <arg name="color_height" default="720"/>     <!-- Height of the color image -->
+    <arg name="color_fps" default="30"/>         <!-- Frames per second for the color stream -->
+
+    <!-- ROS topic name to publish the ArucoMarkerArray message -->
+    <arg name="publish_topic" default="/aruco_poses"/>
+
+    <!-- Frame ID to be used in the header of published ArucoMarkerArray and ArucoMarker messages -->
+    <!-- This should be the TF frame name of the camera's optical center, e.g., camera_color_optical_frame -->
+    <arg name="camera_frame_id" default="camera_color_optical_frame"/>
+
+
+    <node pkg="ee368_project" type="aruco_detector_node.py" name="aruco_detector_node" output="screen">
+        <!-- RealSense Camera Parameters -->
+
+        
+        <!-- ArUco Parameters -->
+        <param name="marker_size" value="$(arg marker_size)"/> <!-- Marker side length in meters (e.g., 3.5 cm) -->
+        <param name="aruco_dictionary_name" value="$(arg aruco_dictionary_name)"/>
+
         
         <!-- Frame ID for TF and messages -->
         <param name="camera_frame_id" value="camera_color_optical_frame"/> <!-- Adjust if your TF tree is different -->
         
         <!-- Debugging: Show OpenCV window -->
-        <param name="show_cv_window" value="true"/>
+        <param name="show_cv_window" value="$(arg show_cv_window)"/>
+        <param name="color_width" value="$(arg color_width)"/>
+        <param name="color_height" value="$(arg color_height)"/>
+        <param name="color_fps" value="$(arg color_fps)"/>
+        <param name="publish_topic" value="$(arg publish_topic)"/>
+        <param name="camera_frame_id" value="$(arg camera_frame_id)"/>
     </node>
 
      <!-- 发布一个静态变换，从 map 到 camera_color_optical_frame -->

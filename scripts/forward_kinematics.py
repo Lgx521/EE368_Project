@@ -142,16 +142,23 @@ if __name__ == '__main__':
     arm = arm()
 
 
-    T_camera_to_ee = np.array([[0, 1, 0, 57],
-                               [-1, 0, 0, 32],
-                               [0, 0, 1, -120],
+    T_camera_to_ee = np.array([[0, -1, 0, 60],
+                               [1, 0, 0, 0],
+                               [0, 0, 1, -110],
                                [0, 0, 0, 1]])
 
 
     arm.set_target_theta(top_view_pos, is_Deg=True)
-    T = arm.T_build(is_print=True) @ T_camera_to_ee
+    T = arm.T_build(is_print=False) @ T_camera_to_ee
     print()
-    arm.print_matrix(T)
+    # arm.print_matrix(T)
     print()
-    P = T @ np.array([[10.8],[-15.6],[478.4],[1]])
+
+    # @test
+    # P = T @ np.array([[10.8],[-15.6],[478.4],[1]])
+
+    x = -144.5
+    y = 113
+    z = 460
+    P = T @ np.array([[x],[y],[z],[1]])
     print(P)

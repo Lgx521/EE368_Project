@@ -19,7 +19,7 @@ class ArucoDetectorROS:
         self.marker_real_size_meters = rospy.get_param("~marker_size", 0.05)
         aruco_dict_name_param = rospy.get_param("~aruco_dictionary_name", "DICT_6X6_250")
         self.camera_frame_id = rospy.get_param("~camera_frame_id", "camera_color_optical_frame")
-        # 保留 show_cv_window 参数，但默认设为 False
+        # 保留 show_cv_window 参数
         self.show_cv_window = rospy.get_param("~show_cv_window", False)
 
         try:
@@ -40,8 +40,8 @@ class ArucoDetectorROS:
         # --- RealSense Initialization ---
         self.pipeline = rs.pipeline()
         self.config = rs.config()
-        self.color_width = rospy.get_param("~color_width", 640)
-        self.color_height = rospy.get_param("~color_height", 480)
+        self.color_width = rospy.get_param("~color_width", 1280)
+        self.color_height = rospy.get_param("~color_height", 720)
         self.color_fps = rospy.get_param("~color_fps", 30)
 
         self.config.enable_stream(rs.stream.color, self.color_width, self.color_height, rs.format.bgr8, self.color_fps)
@@ -78,7 +78,7 @@ class ArucoDetectorROS:
         self.bridge = CvBridge() # 初始化 CvBridge
         # 创建一个发布者，用于发布处理后的图像
         # 话题名称可以自定义，例如 "/aruco_detector/image_processed"
-        self.image_pub = rospy.Publisher("aruco_detector/image_processed", Image, queue_size=1)
+        # self.image_pub = rospy.Publisher("aruco_detector/image_processed", Image, queue_size=1)
         self.marker_pub = rospy.Publisher("aruco_detector/markers", ArucoMarkerArray, queue_size=1)
 
         rospy.loginfo("ArUco detector node initialized. Publishing processed image to /aruco_detector/image_processed")
@@ -150,6 +150,8 @@ class ArucoDetectorROS:
             self.marker_pub.publish(marker_array_msg)
 
         # --- 将处理后的图像发布到 ROS 话题 ---
+        # ---不再发布图像信息到话题
+        '''
         try:
             # 使用 bridge 将 OpenCV图像 (display_image) 转换成 ROS Image 消息
             # "bgr8" 表示图像是 BGR 顺序，每个通道 8 位
@@ -159,6 +161,7 @@ class ArucoDetectorROS:
             self.image_pub.publish(img_msg) # 发布图像消息
         except CvBridgeError as e:
             rospy.logerr(f"CvBridge Error: {e}")
+        '''
 
         # --- 移除或条件化 cv2.imshow ---
         if self.show_cv_window: # 仅当参数为 True 时才显示 OpenCV 窗口

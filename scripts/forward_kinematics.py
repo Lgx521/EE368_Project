@@ -120,7 +120,13 @@ class arm:
             result = self.__transfer_matrix(DoF - i - 1) @ result
 
         if is_print:
-            T = list(result)
+            self.print_matrix(result)
+
+        return result
+
+    @staticmethod
+    def print_matrix(matrix):
+            T = list(matrix)
             for i in range(4):
                 for j in range(4):
                     T[i][j] = round(float(T[i][j]),3)
@@ -129,16 +135,23 @@ class arm:
                 for j in range(4):
                     print(str(T[i][j])+'\t', end='')
             print()
-        return result
-
 
 if __name__ == '__main__':
-    top_view_pos = [30.66, 345.62, 63.89, 270.06, 258.1, 345.67]
+    top_view_pos = [30.66, 346.57, 72.23, 270.08, 265.45, 345.69]
 
     arm = arm()
 
+
+    T_camera_to_ee = np.array([[0, 1, 0, 57],
+                               [-1, 0, 0, 32],
+                               [0, 0, 1, -120],
+                               [0, 0, 0, 1]])
+
+
     arm.set_target_theta(top_view_pos, is_Deg=True)
-
-
-    T = arm.T_build(is_print=True)
-
+    T = arm.T_build(is_print=True) @ T_camera_to_ee
+    print()
+    arm.print_matrix(T)
+    print()
+    P = T @ np.array([[10.8],[-15.6],[478.4],[1]])
+    print(P)

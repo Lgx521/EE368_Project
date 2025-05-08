@@ -27,7 +27,6 @@
     <!-- 这里设置平移为0, 旋转为0 (yaw, pitch, roll) -->
     <node pkg="tf" type="static_transform_publisher" name="map_to_camera_broadcaster"
           args="0 0 0 0 0 0 /map /camera_color_optical_frame 100" />
-          <!-- 或者 args="0 0 0 0 0 0 /map /camera_color_optical_frame 100" 也可以 -->
 
     <!-- Optional: To view the image in RViz or image_view -->
     <!-- 

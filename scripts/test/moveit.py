@@ -189,20 +189,6 @@ def main():
   except:
       pass
 
-  if success:
-    rospy.loginfo("Reaching Named Target Vertical...")
-    success &= example.reach_named_position("vertical")
-    print (success)
-  
-  if success:
-    rospy.loginfo("Reaching Joint Angles...")  
-    success &= example.reach_joint_angles(tolerance=0.01) #rad
-    print (success)
-  
-  if success:
-    rospy.loginfo("Reaching Named Target Home...")
-    success &= example.reach_named_position("home")
-    print (success)
 
   if success:
     rospy.loginfo("Reaching Cartesian Pose...")
@@ -226,15 +212,6 @@ def main():
 
     # Send the goal
     success &= example.reach_cartesian_pose(pose=actual_pose, tolerance=0.01, constraints=constraints)
-
-  if example.is_gripper_present and success:
-    rospy.loginfo("Opening the gripper...")
-    success &= example.reach_gripper_position(0)
-    print (success)
-
-    rospy.loginfo("Closing the gripper 50%...")
-    success &= example.reach_gripper_position(0.5)
-    print (success)
 
   # For testing purposes
   rospy.set_param("/kortex_examples_test_results/moveit_general_python", success)

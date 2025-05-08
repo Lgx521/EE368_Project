@@ -10,7 +10,9 @@ project(ee368_project)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  stdmsgs
+  std_msgs
+  cv_bridge
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -47,11 +49,17 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  ArucoMarker.msg
+  ArucoMarkerArray.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -107,7 +115,15 @@ catkin_package(
 #  LIBRARIES ee368_project
 #  CATKIN_DEPENDS roscpp rospy stdmsgs
 #  DEPENDS system_lib
+CATKIN_DEPENDS rospy sensor_msgs geometry_msgs cv_bridge message_runtime
 )
+
+
+catkin_install_python(PROGRAMS
+  scripts/aruco_detector_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 
 ###########
 ## Build ##

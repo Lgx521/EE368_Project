@@ -1,0 +1,36 @@
+<launch>
+    <node pkg="ee368_project" type="aruco_detector_node.py" name="aruco_detector_node" output="screen">
+        <!-- RealSense Camera Parameters -->
+        <param name="color_width" value="640"/>
+        <param name="color_height" value="480"/>
+        <param name="color_fps" value="30"/>
+        
+        <!-- ArUco Parameters -->
+        <param name="marker_size" value="0.035"/> <!-- Marker side length in meters (e.g., 3.5 cm) -->
+        <param name="aruco_dictionary_name" value="DICT_6X6_250"/>
+        <!-- Options: DICT_4X4_50, DICT_4X4_100, DICT_4X4_250, DICT_4X4_1000,
+                      DICT_5X5_50, DICT_5X5_100, DICT_5X5_250, DICT_5X5_1000,
+                      DICT_6X6_50, DICT_6X6_100, DICT_6X6_250, DICT_6X6_1000,
+                      DICT_7X7_50, DICT_7X7_100, DICT_7X7_250, DICT_7X7_1000,
+                      DICT_ARUCO_ORIGINAL, DICT_APRILTAG_16h5, DICT_APRILTAG_25h9,
+                      DICT_APRILTAG_36h10, DICT_APRILTAG_36h11 -->
+        
+        <!-- Frame ID for TF and messages -->
+        <param name="camera_frame_id" value="camera_color_optical_frame"/> <!-- Adjust if your TF tree is different -->
+        
+        <!-- Debugging: Show OpenCV window -->
+        <param name="show_cv_window" value="true"/>
+    </node>
+
+    <!-- Optional: To view the image in RViz or image_view -->
+    <!-- 
+    <node name="image_view_aruco" pkg="image_view" type="image_view" respawn="false" output="log">
+        <remap from="image" to="/aruco_detector/image_processed"/>
+        <param name="autosize" value="true" />
+    </node> 
+    -->
+
+    <!-- Optional: Start RViz to visualize poses (add a PoseArray display for /aruco_detector/markers) -->
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_realsense_detector)/rviz/aruco_config.rviz" /> -->
+
+</launch>

@@ -29,8 +29,8 @@ device = pipeline_profile.get_device()
 # 配置颜色流
 # 你可以根据需要调整分辨率和帧率
 # 常见的 D435 彩色分辨率: 640x480, 1280x720, 1920x1080
-COLOR_WIDTH = 640
-COLOR_HEIGHT = 480
+COLOR_WIDTH = 1280
+COLOR_HEIGHT = 720
 COLOR_FPS = 30
 config.enable_stream(rs.stream.color, COLOR_WIDTH, COLOR_HEIGHT, rs.format.bgr8, COLOR_FPS)
 
@@ -124,6 +124,7 @@ try:
                 # rvec_formatted = ", ".join([f"{x:.3f}" for x in rvecs[i][0]])
                 # tvec_formatted = ", ".join([f"{x:.3f}" for x in tvecs[i][0]])
                 # print(f"Marker ID: {ids[i][0]:<3} | Rvec: [{rvec_formatted}] | Tvec: [{tvec_formatted}] (m)")
+                # print(corners)
 
         else:
             cv2.putText(display_image, "No ArUco markers detected", (10, 30),

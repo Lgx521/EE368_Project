@@ -8,21 +8,20 @@ import pyrealsense2 as rs
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Pose, Point, Quaternion
-# Import your custom messages
 from ee368_project.msg import ArucoMarker, ArucoMarkerArray
-import tf.transformations as tf_trans # For converting rotation matrix to quaternion
+import tf.transformations as tf_trans
 
 class ArucoDetectorROS:
     def __init__(self):
         rospy.init_node('aruco_detector_node', anonymous=False)
 
         # --- Parameters ---
-        self.marker_real_size_meters = rospy.get_param("~marker_size", 0.05) # Default 5cm
+        self.marker_real_size_meters = rospy.get_param("~marker_size", 0.05)
         aruco_dict_name_param = rospy.get_param("~aruco_dictionary_name", "DICT_6X6_250")
         self.camera_frame_id = rospy.get_param("~camera_frame_id", "camera_color_optical_frame")
-        self.show_cv_window = rospy.get_param("~show_cv_window", False) # For debugging
+        # 保留 show_cv_window 参数，但默认设为 False
+        self.show_cv_window = rospy.get_param("~show_cv_window", False)
 
-        # Resolve Aruco dictionary name to OpenCV constant
         try:
             self.aruco_dictionary_name = getattr(aruco, aruco_dict_name_param)
             if self.aruco_dictionary_name is None:
@@ -33,11 +32,10 @@ class ArucoDetectorROS:
 
         self.dictionary = aruco.getPredefinedDictionary(self.aruco_dictionary_name)
         
-        # Compatibility for DetectorParameters
         try:
-            self.parameters = aruco.DetectorParameters() # OpenCV 4.7+
+            self.parameters = aruco.DetectorParameters()
         except AttributeError:
-            self.parameters = aruco.DetectorParameters_create() # Older OpenCV
+            self.parameters = aruco.DetectorParameters_create()
 
         # --- RealSense Initialization ---
         self.pipeline = rs.pipeline()
@@ -77,22 +75,23 @@ class ArucoDetectorROS:
         rospy.loginfo(f"Distortion Coefficients: {self.dist_coeffs.flatten()}")
 
         # --- ROS Publishers and Bridge ---
-        self.bridge = CvBridge()
+        self.bridge = CvBridge() # 初始化 CvBridge
+        # 创建一个发布者，用于发布处理后的图像
+        # 话题名称可以自定义，例如 "/aruco_detector/image_processed"
         self.image_pub = rospy.Publisher("aruco_detector/image_processed", Image, queue_size=1)
         self.marker_pub = rospy.Publisher("aruco_detector/markers", ArucoMarkerArray, queue_size=1)
 
-        rospy.loginfo("ArUco detector node initialized.")
+        rospy.loginfo("ArUco detector node initialized. Publishing processed image to /aruco_detector/image_processed")
         rospy.on_shutdown(self.shutdown_hook)
 
 
     def rotation_matrix_to_quaternion(self, R):
-        """Convert a rotation matrix to a quaternion."""
         q = tf_trans.quaternion_from_matrix(np.vstack((np.hstack((R, np.zeros((3,1)))), [0,0,0,1])))
         return Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
 
     def process_frame(self):
         try:
-            frames = self.pipeline.wait_for_frames(timeout_ms=1000) # Timeout to prevent indefinite block
+            frames = self.pipeline.wait_for_frames(timeout_ms=1000)
         except RuntimeError as e:
             rospy.logwarn_throttle(5, f"Timeout waiting for frames: {e}")
             return
@@ -110,7 +109,9 @@ class ArucoDetectorROS:
         )
 
         current_time = rospy.Time.now()
-        display_image = color_image.copy()
+        # 创建一个副本用于绘制和发布，以免修改原始 color_image (虽然这里 color_image 本身就是副本)
+        display_image = color_image.copy() 
+        
         marker_array_msg = ArucoMarkerArray()
         marker_array_msg.header.stamp = current_time
         marker_array_msg.header.frame_id = self.camera_frame_id 
@@ -118,7 +119,6 @@ class ArucoDetectorROS:
         if ids is not None and len(ids) > 0:
             aruco.drawDetectedMarkers(display_image, corners, ids)
             
-            # Estimate pose for each marker
             rvecs, tvecs, _objPoints = aruco.estimatePoseSingleMarkers(
                 corners, self.marker_real_size_meters, self.camera_matrix, self.dist_coeffs
             )
@@ -127,49 +127,47 @@ class ArucoDetectorROS:
                 rvec = rvecs[i]
                 tvec = tvecs[i]
 
-                # Draw axis (compatibility for older OpenCV)
                 try:
                     cv2.drawFrameAxes(display_image, self.camera_matrix, self.dist_coeffs, rvec, tvec, self.marker_real_size_meters / 2)
                 except AttributeError:
                     aruco.drawAxis(display_image, self.camera_matrix, self.dist_coeffs, rvec, tvec, self.marker_real_size_meters / 2)
                 
-                # Create ArucoMarker message
                 marker_msg = ArucoMarker()
                 marker_msg.header.stamp = current_time
                 marker_msg.header.frame_id = self.camera_frame_id 
-                marker_msg.id = int(marker_id) # Ensure it's a standard int
+                marker_msg.id = int(marker_id)
 
-                # Position
                 marker_msg.pose.position.x = tvec[0][0]
                 marker_msg.pose.position.y = tvec[0][1]
                 marker_msg.pose.position.z = tvec[0][2]
 
-                # Orientation (convert rvec to quaternion)
                 rotation_matrix, _ = cv2.Rodrigues(rvec)
                 marker_msg.pose.orientation = self.rotation_matrix_to_quaternion(rotation_matrix)
                 
                 marker_array_msg.markers.append(marker_msg)
         
-        # Publish detected markers
         if marker_array_msg.markers:
             self.marker_pub.publish(marker_array_msg)
 
-        # Publish processed image
+        # --- 将处理后的图像发布到 ROS 话题 ---
         try:
+            # 使用 bridge 将 OpenCV图像 (display_image) 转换成 ROS Image 消息
+            # "bgr8" 表示图像是 BGR 顺序，每个通道 8 位
             img_msg = self.bridge.cv2_to_imgmsg(display_image, "bgr8")
-            img_msg.header.stamp = current_time
-            img_msg.header.frame_id = self.camera_frame_id # Or a more generic frame if needed
-            self.image_pub.publish(img_msg)
+            img_msg.header.stamp = current_time # 设置消息的时间戳
+            img_msg.header.frame_id = self.camera_frame_id # 设置图像的坐标系
+            self.image_pub.publish(img_msg) # 发布图像消息
         except CvBridgeError as e:
             rospy.logerr(f"CvBridge Error: {e}")
 
-        if self.show_cv_window:
-            cv2.imshow("ArUco Detection (ROS)", display_image)
-            cv2.waitKey(1)
+        # --- 移除或条件化 cv2.imshow ---
+        if self.show_cv_window: # 仅当参数为 True 时才显示 OpenCV 窗口
+            cv2.imshow("ArUco Detection (ROS - CV Window)", display_image)
+            cv2.waitKey(1) # 仍然需要 waitKey 来处理 OpenCV 窗口事件
 
 
     def run(self):
-        rate = rospy.Rate(self.color_fps) # Match camera FPS or a bit lower
+        rate = rospy.Rate(self.color_fps)
         while not rospy.is_shutdown():
             self.process_frame()
             try:
@@ -178,13 +176,14 @@ class ArucoDetectorROS:
                 rospy.loginfo("ROS Interrupt. Shutting down.")
                 break
         
+        # 如果使用了 OpenCV 窗口，确保在退出时关闭它
         if self.show_cv_window:
             cv2.destroyAllWindows()
 
 
     def shutdown_hook(self):
         rospy.loginfo("Stopping RealSense pipeline...")
-        if hasattr(self, 'pipeline'): # Check if pipeline was initialized
+        if hasattr(self, 'pipeline'):
             self.pipeline.stop()
         rospy.loginfo("Shutdown complete.")
 
@@ -200,5 +199,6 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
     finally:
-        if rospy.get_param("~show_cv_window", False): # ensure cv window is closed if used
+        # 确保如果参数设定为显示窗口，在任何退出情况下都尝试关闭
+        if rospy.is_shutdown() and rospy.get_param("~show_cv_window", False):
              cv2.destroyAllWindows()

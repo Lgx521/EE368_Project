@@ -23,3 +23,22 @@ The final course project of `EE368`.
 [这里是CSDN的一个博客，如何使用pyrealsense2获得相机内参等等信息](https://blog.csdn.net/Dontla/article/details/102644909)
 
 ### Control: How to move
+
+---
+## 关于视觉的部分
+1. 相机的aruco标签识别已经写好了，运行 `aruco_detector_node.py` 即可通相机视觉标定aruco标签，并且发布视觉标签的原点坐标在 `/aruco_detector/markers ` 中。
+2.  相机的坐标系标定也写好了，运行 `forward_kinematics.py` 即可通过marker发布的数据计算目标位置的cartesian coordinate。
+3.  使用 `moveit.py` 即可控制机械臂移动现移动到top_view再移动到目标位置（这里需要手动设置目标点的坐标，后面会修改为直接调用forward kinematics的结果不用手动调包了。
+---
+- 相机坐标系相对位置  
+$$
+^6_{camera}T = \begin{bmatrix}
+   0 & -1 & 0 & 60 \\
+  1 & 0 & 0 & 0 \\
+  0 & 0 & 1 & -110 \\
+  0 & 0 & 0 & 1
+  \end{bmatrix}
+$$
+
+- top_view 关节位置
+`top_view_pos = [30.66, 346.57, 72.23, 270.08, 265.45, 345.69]`

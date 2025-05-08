@@ -1,12 +1,12 @@
 <launch>
     <node pkg="ee368_project" type="aruco_detector_node.py" name="aruco_detector_node" output="screen">
         <!-- RealSense Camera Parameters -->
-        <param name="color_width" value="640"/>
-        <param name="color_height" value="480"/>
+        <param name="color_width" value="1280"/>
+        <param name="color_height" value="720"/>
         <param name="color_fps" value="30"/>
         
         <!-- ArUco Parameters -->
-        <param name="marker_size" value="0.035"/> <!-- Marker side length in meters (e.g., 3.5 cm) -->
+        <param name="marker_size" value="0.05"/> <!-- Marker side length in meters (e.g., 3.5 cm) -->
         <param name="aruco_dictionary_name" value="DICT_6X6_250"/>
         <!-- Options: DICT_4X4_50, DICT_4X4_100, DICT_4X4_250, DICT_4X4_1000,
                       DICT_5X5_50, DICT_5X5_100, DICT_5X5_250, DICT_5X5_1000,
@@ -21,6 +21,13 @@
         <!-- Debugging: Show OpenCV window -->
         <param name="show_cv_window" value="true"/>
     </node>
+
+     <!-- 发布一个静态变换，从 map 到 camera_color_optical_frame -->
+    <!-- args: x y z yaw pitch roll parent_frame child_frame period_ms -->
+    <!-- 这里设置平移为0, 旋转为0 (yaw, pitch, roll) -->
+    <node pkg="tf" type="static_transform_publisher" name="map_to_camera_broadcaster"
+          args="0 0 0 0 0 0 /map /camera_color_optical_frame 100" />
+          <!-- 或者 args="0 0 0 0 0 0 /map /camera_color_optical_frame 100" 也可以 -->
 
     <!-- Optional: To view the image in RViz or image_view -->
     <!-- 

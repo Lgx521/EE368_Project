@@ -162,6 +162,7 @@ class ArucoDetectorROS:
 
         # --- 移除或条件化 cv2.imshow ---
         if self.show_cv_window: # 仅当参数为 True 时才显示 OpenCV 窗口
+            # rospy.logwarn("show image")
             cv2.imshow("ArUco Detection (ROS - CV Window)", display_image)
             cv2.waitKey(1) # 仍然需要 waitKey 来处理 OpenCV 窗口事件
 

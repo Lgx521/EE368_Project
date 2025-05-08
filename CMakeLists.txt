@@ -11,8 +11,11 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
+  geometry_msgs
   cv_bridge
   message_generation
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -115,15 +118,20 @@ catkin_package(
 #  LIBRARIES ee368_project
 #  CATKIN_DEPENDS roscpp rospy stdmsgs
 #  DEPENDS system_lib
-CATKIN_DEPENDS rospy sensor_msgs geometry_msgs cv_bridge message_runtime
+CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge message_runtime tf
 )
 
 
+# catkin_install_python(PROGRAMS
+#   scripts/aruco_detector_node.py
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
+
 catkin_install_python(PROGRAMS
+  scripts/aruco_subscriber_node.py
   scripts/aruco_detector_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
 
 ###########
 ## Build ##

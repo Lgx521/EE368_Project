@@ -147,21 +147,9 @@ class ArucoDetectorROS:
                 marker_array_msg.markers.append(marker_msg)
         
         if marker_array_msg.markers:
+            # rospy.logwarn('pose published')
             self.marker_pub.publish(marker_array_msg)
 
-        # --- 将处理后的图像发布到 ROS 话题 ---
-        # ---不再发布图像信息到话题
-        '''
-        try:
-            # 使用 bridge 将 OpenCV图像 (display_image) 转换成 ROS Image 消息
-            # "bgr8" 表示图像是 BGR 顺序，每个通道 8 位
-            img_msg = self.bridge.cv2_to_imgmsg(display_image, "bgr8")
-            img_msg.header.stamp = current_time # 设置消息的时间戳
-            img_msg.header.frame_id = self.camera_frame_id # 设置图像的坐标系
-            self.image_pub.publish(img_msg) # 发布图像消息
-        except CvBridgeError as e:
-            rospy.logerr(f"CvBridge Error: {e}")
-        '''
 
         # --- 移除或条件化 cv2.imshow ---
         if self.show_cv_window: # 仅当参数为 True 时才显示 OpenCV 窗口

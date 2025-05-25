@@ -314,4 +314,5 @@ def main():
         rospy.loginfo("Example completed successfully.")
 
 if __name__ == "__main__":
-    main()
+    # main()
+    go_to_cartesian_pos([0.2,-0.1,0.1])

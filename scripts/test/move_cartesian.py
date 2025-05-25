@@ -203,7 +203,7 @@ class SimplifiedArmController:
     
 
 def go_to_cartesian_pos(pos, orientation=[0, 180, 45]):
-    
+
     '''
     外部调用的控制机械臂运动的函数
     默认orientation为朝下
@@ -218,7 +218,8 @@ def go_to_cartesian_pos(pos, orientation=[0, 180, 45]):
         if not success:
             rospy.logerr("Failed to clear faults. Aborting.")
             return
-            success &= controller.activate_notifications()
+        
+        success &= controller.activate_notifications()
         if not success:
             rospy.logerr("Failed to activate notifications. Aborting.")
             return

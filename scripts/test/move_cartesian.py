@@ -200,6 +200,39 @@ class SimplifiedArmController:
 
         rospy.loginfo("Moving to a predefined 'home' Cartesian position.")
         return self.move_to_cartesian_pose(home_x, home_y, home_z, home_thx, home_thy, home_thz)
+    
+
+def go_to_cartesian_pos(pos, orientation=[0, 180, 45]):
+    
+    '''
+    外部调用的控制机械臂运动的函数
+    默认orientation为朝下
+    pos=[pos[0], pos[1], pos[2]]，为目标的cartesian坐标位置
+    '''
+
+    controller = SimplifiedArmController()
+    success = controller.is_init_success
+
+    if success:
+        success &= controller.clear_robot_faults()
+        if not success:
+            rospy.logerr("Failed to clear faults. Aborting.")
+            return
+            success &= controller.activate_notifications()
+        if not success:
+            rospy.logerr("Failed to activate notifications. Aborting.")
+            return
+        
+        target_x = pos[0]
+        target_y = pos[1]
+        target_z = pos[2]
+        target_theta_x = orientation[0]
+        target_theta_y = orientation[1]
+        target_theta_z = orientation[2]
+
+        rospy.loginfo(f"--- Moving to target Cartesian pose 1 ({target_x}, {target_y}, {target_z}) ---")
+        success &= controller.move_to_cartesian_pose(target_x, target_y, target_z, target_theta_x, target_theta_y, target_theta_z)
+        if not success: rospy.logwarn(f"Move to pose 1 failed or was aborted.")
 
 
 def main():

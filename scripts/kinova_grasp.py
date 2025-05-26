@@ -105,7 +105,6 @@ class KinovaSimpleGraspController: # 重命名类以反映简化
         rospy.loginfo("Kinova Simple Grasp Controller initialized. Waiting for target position commands on /kinova_grasp/target_position_in_camera")
 
     def base_feedback_callback(self, msg: BaseCyclic_Feedback):
-        # (回调函数内容与上一版相同)
         if len(msg.actuators) >= self.fk_calculator.DoF:
             angles = []
             for i in range(self.fk_calculator.DoF):
@@ -115,7 +114,6 @@ class KinovaSimpleGraspController: # 重命名类以反映简化
             rospy.logwarn_throttle(5, f"Received base_feedback with {len(msg.actuators)} actuators, expected {self.fk_calculator.DoF}")
 
     def joint_states_callback(self, msg: JointState):
-        # (回调函数内容与上一版相同)
         if not self.joint_names_from_driver:
             rospy.logwarn_throttle(5, "Joint names order not set for joint_states_callback.")
             return
@@ -130,7 +128,6 @@ class KinovaSimpleGraspController: # 重命名类以反映简化
             self.current_joint_angles_rad = None
 
     def get_current_T_base_camera(self):
-        # (此函数内容与上一版相同)
         if self.current_joint_angles_rad is None:
             rospy.logerr("Current joint angles not available.")
             return None

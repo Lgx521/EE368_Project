@@ -187,17 +187,7 @@ class SimplifiedArmController:
         # Re-adding it if Homing is desired.
         # For now, let's assume a "safe" or "retract" position instead of full API home.
         rospy.loginfo("Homing action (moving to a predefined safe pose) requested.")
-        # Define a safe/home pose (example, adjust for your robot and workspace)
-        # For Gen3, a common near-home or stow pose might be:
-        # X ~0.3 to 0.4m, Y ~0.0m, Z ~0.5m, orientations can vary, e.g., tool pointing down.
-        # For this example, let's use a slightly retracted pose.
-        # Please verify these values for your specific setup and robot model.
-        # A true "Home" action is more robust.
-        # home_x, home_y, home_z = 0.35, 0.0, 0.5
-        # home_thx, home_thy, home_thz = 180.0, 0.0, 90.0 # Example: tool pointing down
 
-        # Let's use a more generic "ready" pose often used in examples
-        # This is a common pose for Gen3 7DOF. Adjust if you have 6DOF or a different setup.
         home_x, home_y, home_z = 0.30, 0.10, 0.30
         home_thx, home_thy, home_thz = 0.0, 180.0, 45.0 # Tool pointing down
 
@@ -317,4 +307,5 @@ def main():
         rospy.loginfo("Example completed successfully.")
 
 if __name__ == "__main__":
-    main()
+    arm = SimplifiedArmController()
+    arm.example_home_the_robot()

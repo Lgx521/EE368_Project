@@ -52,9 +52,8 @@ class KinovaSimpleGraspController:
         # --- 预定义的末端执行器目标姿态 (在基座标系下) ---
         # 例如，夹爪垂直向下。theta_x, theta_y, theta_z (度)
         # 常见的是 [180, 0, X] 其中 X 取决于夹爪的初始安装和期望的工具x轴方向。
-        # [180, 0, 90] 通常意味着工具Z轴向下, 工具X轴指向基座Y轴方向 (对于Kinova ZYX欧拉角)
         self.fixed_gripper_orientation_base_deg = rospy.get_param(
-            '~fixed_gripper_orientation_base_deg', [180.0, 0.0, 90.0]
+            '~fixed_gripper_orientation_base_deg', [0.0, 180.0, 45.0]
         )
         rospy.loginfo(f"Using fixed gripper orientation in BASE frame (degrees): {self.fixed_gripper_orientation_base_deg}")
 

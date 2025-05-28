@@ -1,319 +1,281 @@
 #!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 
-
-import sys
 import rospy
-import time
+import numpy as np
+import tf.transformations as tf_trans
 
-from kortex_driver.srv import *
-from kortex_driver.msg import *
+# --- 导入自定义消息 ---
+# from ee368_project.msg import TargetPositionInCamera # 旧的
+from ee368_project.msg import PickAndPlaceGoalInCamera # 新的 pick and place 消息
 
-class SimplifiedArmController:
+# --- 从同一包的scripts目录导入其他模块 ---
+try:
+    from move_cartesian import SimplifiedArmController
+    from forward_kinematics import arm as FKCalculator
+except ImportError as e:
+    rospy.logerr(f"Failed to import SimplifiedArmController or FKCalculator: {e}")
+    import sys
+    sys.exit(1)
+
+from sensor_msgs.msg import JointState
+from kortex_driver.msg import BaseCyclic_Feedback
+
+class KinovaPickAndPlaceController: # 重命名类以反映新功能
     def __init__(self):
-        try:
-            #rospy.init_node('simplified_arm_controller_python')
+        rospy.init_node('kinova_pick_and_place_controller', anonymous=False) # 新的节点名
 
-            # Get node params
-            self.robot_name = rospy.get_param('~robot_name', "my_gen3_lite")
-            self.is_gripper_present = rospy.get_param("/" + self.robot_name + "/is_gripper_present", False)
+        self.robot_name = rospy.get_param('~robot_name', "my_gen3_lite")
+        rospy.loginfo(f"KinovaPickAndPlaceController using robot_name: {self.robot_name}")
 
-            rospy.loginfo(f"Using robot_name {self.robot_name}, is_gripper_present: {self.is_gripper_present}")
+        self.arm_controller = SimplifiedArmController(robot_name_param=self.robot_name) # 传递 robot_name
+        self.is_arm_ready = False
 
-            # Init the action topic subscriber
-            self.action_topic_sub = rospy.Subscriber(f"/{self.robot_name}/action_topic", ActionNotification, self.cb_action_topic)
-            self.last_action_notif_type = None
-
-            # Init the services
-            clear_faults_full_name = f'/{self.robot_name}/base/clear_faults'
-            rospy.wait_for_service(clear_faults_full_name)
-            self.clear_faults = rospy.ServiceProxy(clear_faults_full_name, Base_ClearFaults)
-
-            execute_action_full_name = f'/{self.robot_name}/base/execute_action'
-            rospy.wait_for_service(execute_action_full_name)
-            self.execute_action = rospy.ServiceProxy(execute_action_full_name, ExecuteAction)
-
-            if self.is_gripper_present:
-                send_gripper_command_full_name = f'/{self.robot_name}/base/send_gripper_command'
-                rospy.wait_for_service(send_gripper_command_full_name)
-                self.send_gripper_command = rospy.ServiceProxy(send_gripper_command_full_name, SendGripperCommand)
-
-            activate_publishing_of_action_notification_full_name = f'/{self.robot_name}/base/activate_publishing_of_action_topic'
-            rospy.wait_for_service(activate_publishing_of_action_notification_full_name)
-            self.activate_publishing_of_action_notification = rospy.ServiceProxy(activate_publishing_of_action_notification_full_name, OnNotificationActionTopic)
-
-            self.is_init_success = True
-        except Exception as e:
-            rospy.logerr(f"Initialization failed: {e}")
-            self.is_init_success = False
-
-    def cb_action_topic(self, notif):
-        self.last_action_notif_type = notif.action_event
-
-    def _fill_cartesian_waypoint(self, x, y, z, theta_x, theta_y, theta_z, blending_radius=0.0):
-        """Helper function to create a CartesianWaypoint."""
-        waypoint = Waypoint()
-        cartesian_waypoint = CartesianWaypoint()
-
-        cartesian_waypoint.pose.x = x
-        cartesian_waypoint.pose.y = y
-        cartesian_waypoint.pose.z = z
-        cartesian_waypoint.pose.theta_x = theta_x  # In degrees
-        cartesian_waypoint.pose.theta_y = theta_y  # In degrees
-        cartesian_waypoint.pose.theta_z = theta_z  # In degrees
-        # Reference frame is typically BASE for absolute movements
-        cartesian_waypoint.reference_frame = CartesianReferenceFrame.CARTESIAN_REFERENCE_FRAME_BASE
-        cartesian_waypoint.blending_radius = blending_radius # 0 for stop at waypoint
-        waypoint.oneof_type_of_waypoint.cartesian_waypoint.append(cartesian_waypoint)
-
-        return waypoint
-
-    def _wait_for_action_end_or_abort(self):
-        """Waits for an action to complete or abort."""
-        while not rospy.is_shutdown():
-            if self.last_action_notif_type == ActionEvent.ACTION_END:
-                rospy.loginfo("Received ACTION_END notification")
-                return True
-            elif self.last_action_notif_type == ActionEvent.ACTION_ABORT:
-                rospy.logwarn("Received ACTION_ABORT notification")
-                return False
-            else:
-                time.sleep(0.01)
-        return False # rospy.is_shutdown()
-
-    def activate_notifications(self):
-        """Activates action notifications from the robot."""
-        req = OnNotificationActionTopicRequest()
-        rospy.loginfo("Activating action notifications...")
-        try:
-            self.activate_publishing_of_action_notification(req)
-            rospy.loginfo("Successfully activated Action Notifications!")
-            rospy.sleep(1.0) # Give it a moment to register
-            return True
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Failed to call OnNotificationActionTopic: {e}")
-            return False
-
-    def clear_robot_faults(self):
-        """Clears any existing faults on the robot."""
-        try:
-            self.clear_faults()
-            rospy.loginfo("Cleared faults successfully.")
-            rospy.sleep(1.0) # Give it a moment
-            return True
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Failed to call ClearFaults: {e}")
-            return False
-
-    def move_to_cartesian_pose(self, x, y, z, theta_x, theta_y, theta_z):
-        """
-        Moves the robot's end-effector to a specified absolute Cartesian pose.
-        x, y, z: Target position in meters (relative to base frame).
-        theta_x, theta_y, theta_z: Target orientation in degrees (Euler angles, typically Tait-Bryan ZYX convention for Kinova).
-        """
-        if not self.is_init_success:
-            rospy.logerr("Controller not initialized. Cannot move.")
-            return False
-
-        self.last_action_notif_type = None # Reset before starting new action
-
-        req = ExecuteActionRequest()
-        trajectory = WaypointList()
-
-        # Create a single waypoint for the target pose
-        waypoint = self._fill_cartesian_waypoint(x, y, z, theta_x, theta_y, theta_z, 0.0)
-        trajectory.waypoints.append(waypoint)
-
-        # Duration 0 means the robot will use its default speed profile
-        trajectory.duration = 0
-        trajectory.use_optimal_blending = False # Not relevant for a single waypoint
-
-        req.input.oneof_action_parameters.execute_waypoint_list.append(trajectory)
-
-        rospy.loginfo(f"Sending robot to Cartesian pose: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, ThX={theta_x:.1f}, ThY={theta_y:.1f}, ThZ={theta_z:.1f}")
-        try:
-            self.execute_action(req)
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Failed to call ExecuteAction for Cartesian pose: {e}")
-            return False
+        if not self.arm_controller.is_init_success:
+            rospy.logerr("Arm controller initialization failed.")
+            return
+        if self.arm_controller.clear_robot_faults() and self.arm_controller.activate_notifications():
+            self.is_arm_ready = True
+            rospy.loginfo("Arm is ready and notifications activated.")
         else:
-            rospy.loginfo("Cartesian pose command sent. Waiting for completion...")
-            return self._wait_for_action_end_or_abort()
+            rospy.logerr("Failed to initialize arm.")
+            return
 
-    def move_gripper(self, position_percentage):
-        """
-        Moves the gripper to a specified position.
-        position_percentage: 0.0 (fully open) to 1.0 (fully closed).
-        """
-        if not self.is_init_success:
-            rospy.logerr("Controller not initialized. Cannot move gripper.")
-            return False
-        if not self.is_gripper_present:
-            rospy.logwarn("No gripper is present on the arm. Command ignored.")
-            return True # Or False, depending on how you want to handle this
+        self.fk_calculator = FKCalculator(Dof=6)
 
-        # Initialize the request
-        req = SendGripperCommandRequest()
-        finger = Finger()
-        finger.finger_identifier = 0 # Usually 0 for the first (or only) finger/gripper mechanism
-        finger.value = float(position_percentage) # Ensure it's a float
-        req.input.gripper.finger.append(finger)
-        req.input.mode = GripperMode.GRIPPER_POSITION
+        T_ee_camera_mm_translation = np.array([60.0, 0.0, -110.0])
+        R_ee_camera = np.array([[0., -1.,  0.], [1.,  0.,  0.], [0.,  0.,  1.]])
+        self.T_ee_camera = np.identity(4)
+        self.T_ee_camera[:3,:3] = R_ee_camera
+        self.T_ee_camera[0:3, 3] = T_ee_camera_mm_translation / 1000.0
+        rospy.loginfo(f"Using T_ee_camera:\n{self.T_ee_camera}")
 
-        rospy.loginfo(f"Sending gripper to position: {position_percentage*100:.0f}%")
+        self.fixed_gripper_orientation_base_deg = rospy.get_param(
+            '~fixed_gripper_orientation_base_deg', [180.0, 0.0, 90.0]
+        )
+        rospy.loginfo(f"Using fixed gripper orientation in BASE frame (degrees): {self.fixed_gripper_orientation_base_deg}")
 
+        self.pick_z_offset_meters = rospy.get_param("~pick_z_offset_meters", 0.00)
+        rospy.loginfo(f"Using pick Z offset from detected pick point: {self.pick_z_offset_meters} meters")
+        
+        self.place_z_offset_meters = rospy.get_param("~place_z_offset_meters", 0.00) # Z偏移用于放置
+        rospy.loginfo(f"Using place Z offset from detected place point: {self.place_z_offset_meters} meters")
+
+        self.pre_action_z_lift_meters = rospy.get_param("~pre_action_z_lift_meters", 0.05) # 预抓取/预放置的抬高量
+        rospy.loginfo(f"Using pre-action Z lift: {self.pre_action_z_lift_meters} meters")
+
+
+        self.current_joint_angles_rad = None
+        self.joint_names_from_driver = []
+
+        self.joint_state_sub = rospy.Subscriber(
+            f"/{self.robot_name}/base_feedback", BaseCyclic_Feedback, self.base_feedback_callback, queue_size=1)
+        rospy.loginfo("Subscribed to /base_feedback. Waiting for initial joint states...")
+        rate = rospy.Rate(10)
+        timeout_counter = 0
+        while self.current_joint_angles_rad is None and not rospy.is_shutdown() and timeout_counter < 50:
+            rate.sleep(); timeout_counter += 1
+        if self.current_joint_angles_rad is None and not rospy.is_shutdown():
+            rospy.logwarn(f"Timeout for BaseCyclic_Feedback. Trying sensor_msgs/JointState.")
+            self.joint_state_sub.unregister()
+            self.joint_names_from_driver = rospy.get_param(f"/{self.robot_name}/joint_names",
+                                               [f"joint_{i+1}" for i in range(self.fk_calculator.DoF)])
+            rospy.loginfo(f"Using joint names for JointState: {self.joint_names_from_driver}")
+            self.joint_state_sub = rospy.Subscriber(
+                f"/{self.robot_name}/joint_states", JointState, self.joint_states_callback, queue_size=1)
+            rospy.loginfo(f"Subscribed to /{self.robot_name}/joint_states.")
+            timeout_counter = 0
+            while self.current_joint_angles_rad is None and not rospy.is_shutdown() and timeout_counter < 50:
+                rate.sleep(); timeout_counter +=1
+        if self.current_joint_angles_rad is None:
+             rospy.logerr("CRITICAL: Could not receive joint states. Node will not function correctly.")
+             self.is_arm_ready = False; return
+
+        # 订阅新的 PickAndPlaceGoalInCamera 消息
+        self.pick_and_place_sub = rospy.Subscriber(
+            "kinova_pick_place/goal_in_camera", # 建议的话题名称
+            PickAndPlaceGoalInCamera,
+            self.pick_and_place_callback,
+            queue_size=1
+        )
+        rospy.loginfo("Kinova Pick and Place Controller initialized. Waiting for goals on /kinova_pick_place/goal_in_camera")
+
+    def base_feedback_callback(self, msg: BaseCyclic_Feedback):
+        if len(msg.actuators) >= self.fk_calculator.DoF:
+            angles = [np.deg2rad(msg.actuators[i].position) for i in range(self.fk_calculator.DoF)]
+            self.current_joint_angles_rad = angles
+        else:
+            rospy.logwarn_throttle(5, f"Base_feedback actuators: {len(msg.actuators)}, expected {self.fk_calculator.DoF}")
+
+    def joint_states_callback(self, msg: JointState):
+        if not self.joint_names_from_driver: rospy.logwarn_throttle(5, "Joint names order not set."); return
+        angles_dict = dict(zip(msg.name, msg.position))
         try:
-            self.send_gripper_command(req)
-            time.sleep(0.75) # Allow time for gripper to move; no direct action notification for this simple command
-            rospy.loginfo("Gripper command sent.")
-            return True
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Failed to call SendGripperCommand: {e}")
-            return False
-        except AttributeError:
-            rospy.logerr("Gripper service proxy not initialized. Is gripper present and configured?")
-            return False
+            self.current_joint_angles_rad = [angles_dict[name] for name in self.joint_names_from_driver]
+        except KeyError as e:
+            rospy.logwarn_throttle(5, f"Joint name '{e}' not found. Available: {list(angles_dict.keys())}")
+            self.current_joint_angles_rad = None
 
-    def example_home_the_robot(self):
-        """Homes the robot using the predefined Home Action (ID #2)."""
-        if not self.is_init_success:
-            rospy.logerr("Controller not initialized. Cannot home.")
-            return False
+    def get_current_T_base_camera(self):
+        if self.current_joint_angles_rad is None: rospy.logerr("Current joint angles not available."); return None
+        self.fk_calculator.set_target_theta(self.current_joint_angles_rad, is_Deg=False)
+        T_base_to_ee_mm = self.fk_calculator.T_build()
+        T_base_to_ee_m = T_base_to_ee_mm.copy()
+        T_base_to_ee_m[0:3, 3] /= 1000.0
+        T_base_camera = T_base_to_ee_m @ self.T_ee_camera
+        return T_base_camera
+
+    def _transform_point_camera_to_base(self, point_in_camera_msg, T_base_camera_current):
+        """Helper function to transform a geometry_msgs/Point from camera to base frame."""
+        P_camera_homogeneous = np.array([point_in_camera_msg.x,
+                                         point_in_camera_msg.y,
+                                         point_in_camera_msg.z,
+                                         1.0]).reshape(4, 1)
+        P_base_homogeneous = T_base_camera_current @ P_camera_homogeneous
+        return P_base_homogeneous[0:3, 0] # 返回 (x,y,z) numpy array in base frame
+
+    def _perform_action_sequence(self, action_name, target_xyz_base, z_offset_specific, is_pick_action):
+        """
+        Helper function to perform a sequence of movements for picking or placing.
+        action_name: "Pick" or "Place" for logging.
+        target_xyz_base: The (x,y,z) of the object's center in base frame (before specific z_offset).
+        z_offset_specific: The pick_z_offset_meters or place_z_offset_meters.
+        is_pick_action: Boolean, True if picking, False if placing.
+        Returns: True if sequence seems successful, False otherwise.
+        """
+        rospy.loginfo(f"--- Starting {action_name} Sequence ---")
+
+        actual_gripper_target_z_base = target_xyz_base[2] + z_offset_specific
+        target_orient_base_deg = self.fixed_gripper_orientation_base_deg
+
+        # A. 预动作位置 (在最终动作Z值基础上再抬高)
+        pre_action_pos_x = target_xyz_base[0]
+        pre_action_pos_y = target_xyz_base[1]
+        pre_action_pos_z = actual_gripper_target_z_base + self.pre_action_z_lift_meters
+
+        rospy.loginfo(f"Step 1 ({action_name}): Moving to pre-{action_name.lower()} position (X:{pre_action_pos_x:.3f}, Y:{pre_action_pos_y:.3f}, Z:{pre_action_pos_z:.3f})...")
+        if not self.arm_controller.move_to_cartesian_pose(
+            pre_action_pos_x, pre_action_pos_y, pre_action_pos_z,
+            target_orient_base_deg[0], target_orient_base_deg[1], target_orient_base_deg[2]):
+            rospy.logwarn(f"Failed to move to pre-{action_name.lower()} position. Aborting {action_name}.")
+            self.arm_controller.clear_robot_faults(); return False
+
+        # B. 如果是放置，先移动到精确放置点上方；如果是抓取，则打开夹爪
+        if not is_pick_action: # Placing
+            rospy.loginfo(f"Step 2 ({action_name}): Moving to precise place approach Z...") #保持在抬高Z，然后下降
+            # 这一步是可选的，也可以直接在下一步下降
+        elif self.arm_controller.is_gripper_present: # Picking
+            rospy.loginfo(f"Step 2 ({action_name}): Opening gripper...")
+            if not self.arm_controller.move_gripper(0.0): rospy.logwarn("Failed to open gripper.")
+            rospy.sleep(1.0)
+
+        # C. 移动到精确的抓取/放置Z高度
+        rospy.loginfo(f"Step 3 ({action_name}): Moving to precise {action_name.lower()} Z position (X:{target_xyz_base[0]:.3f}, Y:{target_xyz_base[1]:.3f}, Z:{actual_gripper_target_z_base:.3f})...")
+        if not self.arm_controller.move_to_cartesian_pose(
+            target_xyz_base[0], target_xyz_base[1], actual_gripper_target_z_base,
+            target_orient_base_deg[0], target_orient_base_deg[1], target_orient_base_deg[2]):
+            rospy.logwarn(f"Failed to move to {action_name.lower()} position. Aborting {action_name}.")
+            self.arm_controller.clear_robot_faults(); return False
+        rospy.sleep(0.5)
+
+        # D. 执行夹爪动作 (抓取时闭合，放置时打开)
+        if self.arm_controller.is_gripper_present:
+            if is_pick_action:
+                rospy.loginfo(f"Step 4 ({action_name}): Closing gripper...")
+                grasp_closure = rospy.get_param("~grasp_closure_percentage", 0.7)
+                if not self.arm_controller.move_gripper(grasp_closure): rospy.logwarn("Failed to close gripper.")
+            else: # Placing
+                rospy.loginfo(f"Step 4 ({action_name}): Opening gripper...")
+                if not self.arm_controller.move_gripper(0.0): rospy.logwarn("Failed to open gripper.")
+            rospy.sleep(1.5) # 等待夹爪动作
+
+        # E. 向上提起/离开
+        rospy.loginfo(f"Step 5 ({action_name}): Lifting/Retreating from {action_name.lower()} point...")
+        if not self.arm_controller.move_to_cartesian_pose( # 回到预动作的Z高度
+            pre_action_pos_x, pre_action_pos_y, pre_action_pos_z,
+            target_orient_base_deg[0], target_orient_base_deg[1], target_orient_base_deg[2]):
+            rospy.logwarn(f"Failed to lift/retreat from {action_name.lower()} point.")
+            self.arm_controller.clear_robot_faults(); return False # 即使提起失败也返回False
         
-        # The Home Action is used to home the robot. It cannot be deleted and is always ID #2:
-        # This requires the ReadAction service, which we removed for strictness.
-        # Re-adding it if Homing is desired.
-        # For now, let's assume a "safe" or "retract" position instead of full API home.
-        rospy.loginfo("Homing action (moving to a predefined safe pose) requested.")
-        # Define a safe/home pose (example, adjust for your robot and workspace)
-        # For Gen3, a common near-home or stow pose might be:
-        # X ~0.3 to 0.4m, Y ~0.0m, Z ~0.5m, orientations can vary, e.g., tool pointing down.
-        # For this example, let's use a slightly retracted pose.
-        # Please verify these values for your specific setup and robot model.
-        # A true "Home" action is more robust.
-        # home_x, home_y, home_z = 0.35, 0.0, 0.5
-        # home_thx, home_thy, home_thz = 180.0, 0.0, 90.0 # Example: tool pointing down
-
-        # Let's use a more generic "ready" pose often used in examples
-        # This is a common pose for Gen3 7DOF. Adjust if you have 6DOF or a different setup.
-        home_x, home_y, home_z = 0.40, 0.0, 0.40
-        home_thx, home_thy, home_thz = 180.0, 0.0, 90.0 # Tool pointing down
-
-        rospy.loginfo("Moving to a predefined 'home' Cartesian position.")
-        return self.move_to_cartesian_pose(home_x, home_y, home_z, home_thx, home_thy, home_thz)
-    
-
-def go_to_cartesian_pos(pos, orientation=[0, 180, 45]):
-
-    '''
-    外部调用的控制机械臂运动的函数
-    默认orientation为朝下
-    pos=[pos[0], pos[1], pos[2]]，为目标的cartesian坐标位置
-    '''
-
-    controller = SimplifiedArmController()
-    success = controller.is_init_success
-
-    if success:
-        success &= controller.clear_robot_faults()
-        if not success:
-            rospy.logerr("Failed to clear faults. Aborting.")
-            return
-        
-        success &= controller.activate_notifications()
-        if not success:
-            rospy.logerr("Failed to activate notifications. Aborting.")
-            return
-        
-        target_x = pos[0]
-        target_y = pos[1]
-        target_z = pos[2]
-        target_theta_x = orientation[0]
-        target_theta_y = orientation[1]
-        target_theta_z = orientation[2]
-
-        rospy.loginfo(f"--- Moving to target Cartesian pose 1 ({target_x}, {target_y}, {target_z}) ---")
-        success &= controller.move_to_cartesian_pose(target_x, target_y, target_z, target_theta_x, target_theta_y, target_theta_z)
-        if not success: rospy.logwarn(f"Move to pose 1 failed or was aborted.")
+        rospy.loginfo(f"--- {action_name} Sequence Completed ---")
+        return True
 
 
-def main():
-    controller = SimplifiedArmController()
-    success = controller.is_init_success
-
-    if success:
-        # 1. Clear faults
-        success &= controller.clear_robot_faults()
-        if not success:
-            rospy.logerr("Failed to clear faults. Aborting.")
+    def pick_and_place_callback(self, msg: PickAndPlaceGoalInCamera):
+        if not self.is_arm_ready or self.current_joint_angles_rad is None:
+            rospy.logwarn("Arm not ready or joint angles unavailable, skipping pick and place command.")
             return
 
-        # 2. Activate notifications
-        success &= controller.activate_notifications()
-        if not success:
-            rospy.logerr("Failed to activate notifications. Aborting.")
+        rospy.loginfo(f"Received pick and place goal: Pick '{msg.object_id_at_pick}' at CamCoord, Place at '{msg.target_location_id_at_place}' at CamCoord.")
+
+        # 关键：在整个pick-and-place操作开始前，获取一次当前的 T_base_camera
+        # 所有的坐标变换都基于这个“快照”
+        T_base_camera_snapshot = self.get_current_T_base_camera()
+        if T_base_camera_snapshot is None:
+            rospy.logerr("Failed to get T_base_camera at the start of operation. Cannot proceed.")
             return
 
-        # 3. Example Gripper Movement
-        # if controller.is_gripper_present:
-        #     rospy.loginfo("--- Opening gripper ---")
-        #     success &= controller.move_gripper(0.0) # Fully open
-        #     if not success: rospy.logwarn("Gripper open command failed or issue occurred.")
-        #     rospy.sleep(2)
+        rospy.loginfo(f"  Using T_base_camera snapshot for this operation:\n{T_base_camera_snapshot}")
 
-        #     rospy.loginfo("--- Closing gripper to 50% ---")
-        #     success &= controller.move_gripper(0.5) # 50% closed
-        #     if not success: rospy.logwarn("Gripper 50% close command failed or issue occurred.")
-        #     rospy.sleep(2)
-        # else:
-        #     rospy.loginfo("Skipping gripper commands as no gripper is present.")
+        # 1. 计算抓取点在基座标系下的坐标
+        pick_point_base_xyz = self._transform_point_camera_to_base(msg.pick_position_in_camera, T_base_camera_snapshot)
+        rospy.loginfo(f"  Calculated Pick Point in Base Frame: {pick_point_base_xyz}")
+
+        # 2. 计算放置点在基座标系下的坐标
+        place_point_base_xyz = self._transform_point_camera_to_base(msg.place_position_in_camera, T_base_camera_snapshot)
+        rospy.loginfo(f"  Calculated Place Point in Base Frame: {place_point_base_xyz}")
+
+        # --- 执行抓取序列 ---
+        pick_successful = self._perform_action_sequence(
+            action_name="Pick",
+            target_xyz_base=pick_point_base_xyz,
+            z_offset_specific=self.pick_z_offset_meters,
+            is_pick_action=True
+        )
+
+        if not pick_successful:
+            rospy.logwarn("Pick sequence failed. Aborting pick and place operation.")
+            # 可以在这里尝试将机械臂移动到一个安全位置
+            # self.go_to_safe_home_position() # 你需要实现这个方法
+            return
+
+        # --- （可选）中间移动，如果抓取点和放置点之间需要特定的路径规划 ---
+        # rospy.loginfo("Moving to an intermediate point (if necessary)...")
+        # 简单的实现是直接从提起点移动到预放置点，如果距离远，可能需要更平滑的路径
+
+        # --- 执行放置序列 ---
+        place_successful = self._perform_action_sequence(
+            action_name="Place",
+            target_xyz_base=place_point_base_xyz,
+            z_offset_specific=self.place_z_offset_meters,
+            is_pick_action=False
+        )
+
+        if not place_successful:
+            rospy.logwarn("Place sequence failed.")
+            # 即使放置失败，也可能需要将机械臂移到安全位置
+            # self.go_to_safe_home_position()
+            return
+
+        rospy.loginfo("Pick and place operation completed.")
+        # self.go_to_safe_home_position() # 操作完成后回到待命位置
 
 
-        # 4. Example Cartesian Movement
-        # IMPORTANT: Define SAFE and REACHABLE Cartesian coordinates for your robot and environment!
-        # These are just placeholder values.
-        # X, Y, Z are in meters from the robot base.
-        # ThetaX, ThetaY, ThetaZ are in degrees (Euler angles, often Tait-Bryan ZYX).
-        target_x = 0.3
-        target_y = 0.1
-        target_z = 0.3
-        target_theta_x = 0 # Example: tool pointing down
-        target_theta_y = 180.0
-        target_theta_z = 45
-
-        rospy.loginfo(f"--- Moving to target Cartesian pose 1 ({target_x}, {target_y}, {target_z}) ---")
-        success &= controller.move_to_cartesian_pose(target_x, target_y, target_z, target_theta_x, target_theta_y, target_theta_z)
-        if not success: rospy.logwarn(f"Move to pose 1 failed or was aborted.")
-        rospy.sleep(1)
-
-        # Example of a second pose
-        # target_x_2 = 0.312
-        # target_y_2 = 0.055
-        # target_z_2 = -0.059
-        target_x_2 = 0.363
-        target_y_2 = 0.238
-        target_z_2 = -0.01
-        # Keep orientation same or change as needed
-        target_theta_x_2 = target_theta_x
-        target_theta_y_2 = target_theta_y
-        target_theta_z_2 = target_theta_z
+    def run(self):
+        if self.is_arm_ready:
+            rospy.loginfo(f"{rospy.get_name()} is running and waiting for commands...")
+            rospy.spin()
+        else:
+            rospy.logerr(f"{rospy.get_name()} could not start because arm is not ready or joint states unavailable.")
 
 
-        rospy.loginfo(f"--- Moving to target Cartesian pose 2 ({target_x_2}, {target_y_2}, {target_z_2}) ---")
-        success &= controller.move_to_cartesian_pose(target_x_2, target_y_2, target_z_2, target_theta_x_2, target_theta_y_2, target_theta_z_2)
-        if not success: rospy.logwarn(f"Move to pose 2 failed or was aborted.")
-        rospy.sleep(1)
-
-        # 5. Go to a "home" or "retract" position
-        # rospy.loginfo("--- Returning to a predefined home/safe pose ---")
-        # success &= controller.example_home_the_robot() # Using our custom home/safe pose
-        # if not success: rospy.logwarn("Moving to home/safe pose failed or was aborted.")
-
-    if not success:
-        rospy.logerr("The example encountered an error.")
-    else:
-        rospy.loginfo("Example completed successfully.")
-
-if __name__ == "__main__":
-    main()
-    # arm = SimplifiedArmController()
-    # arm.go_to_cartesian_pos([0.3,0.3,0.2])
+if __name__ == '__main__':
+    try:
+        controller_node = KinovaPickAndPlaceController()
+        controller_node.run()
+    except rospy.ROSInterruptException:
+        rospy.loginfo("Kinova Pick and Place Controller interrupted.")
+    except Exception as e:
+        rospy.logerr(f"Unhandled exception: {e}")
+        import traceback
+        traceback.print_exc()

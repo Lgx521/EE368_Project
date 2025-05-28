@@ -28,12 +28,11 @@ d_6 = 235
 DoF = 6
 
 class joint:
-    def __init__(self, alpha, a, theta, d, Dof=6):
+    def __init__(self, alpha, a, theta, d):
         self.alpha = alpha
         self.a = a
         self.theta = theta
         self.d = d
-        self.Dof = Dof
 
     def set_alpha(self, alpha):
         self.alpha = alpha
@@ -51,7 +50,7 @@ class joint:
 class arm:
     def __init__(self, Dof = 6):
         global DoF
-        DoF = Dof
+        self.DoF = Dof
         self.joints = []
         for _ in range(DoF):
             self.joints.append(joint(0,0,0,0))

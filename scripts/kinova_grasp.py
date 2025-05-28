@@ -132,8 +132,10 @@ class KinovaSimpleGraspController:
             rospy.logerr("Current joint angles not available.")
             return None
         self.fk_calculator.set_target_theta(self.current_joint_angles_rad, is_Deg=False)
-        T_base_to_ee = self.fk_calculator.T_build()
-        T_base_camera = T_base_to_ee @ self.T_ee_camera
+        T_base_to_ee_mm = self.fk_calculator.T_build()
+        T_base_to_ee_m = T_base_to_ee_mm.copy()
+        T_base_to_ee_m[0:3, 3] /= 1000.0 # 将T_base_to_ee的平移从毫米转为米
+        T_base_camera = T_base_to_ee_m @ self.T_ee_camera
         return T_base_camera
 
     def target_position_callback(self, msg: TargetPositionInCamera):

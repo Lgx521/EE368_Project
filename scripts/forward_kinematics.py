@@ -149,6 +149,7 @@ if __name__ == '__main__':
 
 
     arm.set_target_theta(top_view_pos, is_Deg=True)
+
     T = arm.T_build(is_print=False) @ T_camera_to_ee
     print()
     # arm.print_matrix(T)

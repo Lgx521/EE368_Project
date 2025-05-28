@@ -182,7 +182,7 @@ class KinovaSimpleGraspController:
                       f"Orient(deg)=[{target_orient_base_deg[0]:.2f}, {target_orient_base_deg[1]:.2f}, {target_orient_base_deg[2]:.2f}]")
 
         # --- 执行抓取序列 (与上一版类似，但使用计算出的 actual_gripper_target_z_base) ---
-        pre_grasp_z_offset_above_target = 0.05 # m, 在最终抓取Z值基础上再高5cm
+        pre_grasp_z_offset_above_target = 0.1 # m, 在最终抓取Z值基础上再高10cm
         
         # A. 预抓取位置
         pre_grasp_pos_base_x = target_x_base_piece_center

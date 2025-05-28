@@ -137,7 +137,10 @@ class SimplifiedArmController:
             return False
         else:
             rospy.loginfo("Cartesian pose command sent. Waiting for completion...")
-            return self._wait_for_action_end_or_abort()
+            # return self._wait_for_action_end_or_abort()
+            rospy.sleep(2)
+            return True
+
 
     def move_gripper(self, position_percentage):
         """

@@ -9,12 +9,12 @@ from kortex_driver.srv import *
 from kortex_driver.msg import *
 
 class SimplifiedArmController:
-    def __init__(self):
+    def __init__(self, robot_name_param="my_gen3_lite"):
         try:
             #rospy.init_node('simplified_arm_controller_python')
 
             # Get node params
-            self.robot_name = rospy.get_param('~robot_name', "my_gen3_lite")
+            self.robot_name = robot_name_param
             self.is_gripper_present = rospy.get_param("/" + self.robot_name + "/is_gripper_present", False)
 
             rospy.loginfo(f"Using robot_name {self.robot_name}, is_gripper_present: {self.is_gripper_present}")
@@ -137,7 +137,10 @@ class SimplifiedArmController:
             return False
         else:
             rospy.loginfo("Cartesian pose command sent. Waiting for completion...")
-            return self._wait_for_action_end_or_abort()
+            # return self._wait_for_action_end_or_abort()
+            rospy.sleep(2)
+            return True
+
 
     def move_gripper(self, position_percentage):
         """
@@ -195,8 +198,8 @@ class SimplifiedArmController:
 
         # Let's use a more generic "ready" pose often used in examples
         # This is a common pose for Gen3 7DOF. Adjust if you have 6DOF or a different setup.
-        home_x, home_y, home_z = 0.40, 0.0, 0.40
-        home_thx, home_thy, home_thz = 180.0, 0.0, 90.0 # Tool pointing down
+        home_x, home_y, home_z = 0.30, 0.10, 0.30
+        home_thx, home_thy, home_thz = 0.0, 180.0, 45.0 # Tool pointing down
 
         rospy.loginfo("Moving to a predefined 'home' Cartesian position.")
         return self.move_to_cartesian_pose(home_x, home_y, home_z, home_thx, home_thy, home_thz)
@@ -314,5 +317,4 @@ def main():
         rospy.loginfo("Example completed successfully.")
 
 if __name__ == "__main__":
-    # main()
-    go_to_cartesian_pos([0.2,-0.1,0.1])
+    main()

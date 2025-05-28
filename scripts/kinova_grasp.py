@@ -6,7 +6,6 @@ import numpy as np
 import tf.transformations as tf_trans
 
 # --- 导入自定义消息 ---
-# from ee368_project.msg import TargetPositionInCamera # 旧的
 from ee368_project.msg import PickAndPlaceGoalInCamera # 新的 pick and place 消息
 
 # --- 从同一包的scripts目录导入其他模块 ---

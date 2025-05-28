@@ -195,8 +195,8 @@ class SimplifiedArmController:
 
         # Let's use a more generic "ready" pose often used in examples
         # This is a common pose for Gen3 7DOF. Adjust if you have 6DOF or a different setup.
-        home_x, home_y, home_z = 0.40, 0.0, 0.40
-        home_thx, home_thy, home_thz = 180.0, 0.0, 90.0 # Tool pointing down
+        home_x, home_y, home_z = 0.30, 0.10, 0.30
+        home_thx, home_thy, home_thz = 0.0, 180.0, 45.0 # Tool pointing down
 
         rospy.loginfo("Moving to a predefined 'home' Cartesian position.")
         return self.move_to_cartesian_pose(home_x, home_y, home_z, home_thx, home_thy, home_thz)

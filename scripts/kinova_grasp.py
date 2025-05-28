@@ -181,11 +181,11 @@ class KinovaPickAndPlaceController: # 重命名类以反映新功能
         if self.arm_controller.is_gripper_present:
             if is_pick_action:
                 rospy.loginfo(f"Step 4 ({action_name}): Closing gripper...")
-                grasp_closure = rospy.get_param("~grasp_closure_percentage", 0.7)
+                grasp_closure = rospy.get_param("~grasp_closure_percentage", 0.8)
                 if not self.arm_controller.move_gripper(grasp_closure): rospy.logwarn("Failed to close gripper.")
             else: # Placing
                 rospy.loginfo(f"Step 4 ({action_name}): Opening gripper...")
-                if not self.arm_controller.move_gripper(0.0): rospy.logwarn("Failed to open gripper.")
+                if not self.arm_controller.move_gripper(0.2): rospy.logwarn("Failed to open gripper.")
             rospy.sleep(1.5) # 等待夹爪动作
 
         # E. 向上提起/离开

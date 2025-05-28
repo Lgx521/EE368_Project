@@ -1,0 +1,28 @@
+<launch>
+
+    <!-- Argument for the robot name. Can be overridden from command line or other launch files. -->
+    <arg name="robot_name" default="my_gen3_lite"/>
+
+    <!-- Kinova Simple Grasp Controller Node -->
+    <node pkg="ee368_project" type="kinova_simple_grasp_controller.py" name="kinova_simple_grasp_controller" output="screen">
+
+        <!-- Pass the robot_name to the node. -->
+        <param name="robot_name" value="$(arg robot_name)"/>
+
+        <!-- Fixed orientation for the gripper in the BASE frame (degrees). -->
+        <!-- Example: [180.0, 0.0, 90.0] for tool Z-axis pointing down. -->
+        <!-- ADJUST THIS CAREFULLY for your robot and desired grasp orientation. -->
+        <rosparam param="fixed_gripper_orientation_base_deg">[180.0, 0.0, 90.0]</rosparam>
+
+        <!-- Z-axis offset for the gripper relative to the detected object's Z (in meters). -->
+        <!-- 0.0 means gripper aims for the object's detected Z. -->
+        <!-- Negative values aim lower (e.g., if vision detects top surface). -->
+        <param name="grasp_z_offset_meters" value="0.000"/>
+
+        <!-- Gripper closure percentage when grasping (0.0 = open, 1.0 = closed). -->
+        <!-- Adjust based on your gripper and objects. -->
+        <param name="grasp_closure_percentage" value="0.65"/>
+
+    </node>
+
+</launch>

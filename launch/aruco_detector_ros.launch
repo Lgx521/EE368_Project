@@ -1,4 +1,5 @@
 <launch>
+<!-- === 这个是基于realsense ros包的方法 === -->
     <!-- === Arguments for flexibility === -->
     <arg name="marker_size" default="0.05"/> <!-- Marker side length in meters -->
     <arg name="aruco_dictionary_name" default="DICT_6X6_250"/>

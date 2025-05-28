@@ -60,8 +60,10 @@ $$
 目前就是传抓取地点的消息，示例消息如下：  
 ```shell
 rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoalInCamera \
-'{object_id_at_pick: "pawn_to_pick", \
-  pick_position_in_camera: {x: 0.05, y: -0.02, z: 0.4}, \
-  target_location_id_at_place: "target_square_D4", \
-  place_position_in_camera: {x: 0.15, y: 0.08, z: 0.38}}'
+'{
+  object_id_at_pick: "red_pawn_A1",
+  pick_position_in_camera: {x: 0.0, y: 0.0, z: 0.42},
+  target_location_id_at_place: "empty_square_D4",
+  place_position_in_camera: {x: 0.12, y: 0.12, z: 0.42}
+}'
 ```

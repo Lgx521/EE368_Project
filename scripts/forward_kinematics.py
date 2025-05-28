@@ -28,11 +28,12 @@ d_6 = 235
 DoF = 6
 
 class joint:
-    def __init__(self, alpha, a, theta, d):
+    def __init__(self, alpha, a, theta, d, DoF=6):
         self.alpha = alpha
         self.a = a
         self.theta = theta
         self.d = d
+        self.DoF = DoF
 
     def set_alpha(self, alpha):
         self.alpha = alpha

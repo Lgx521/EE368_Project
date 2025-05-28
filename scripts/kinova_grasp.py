@@ -5,8 +5,8 @@ import rospy
 import numpy as np
 import tf.transformations as tf_trans
 
-# --- 从您的包导入自定义消息 ---
-from ee368_project.msg import TargetPositionInCamera # 新的简化消息
+# --- 导入自定义消息 ---
+from ee368_project.msg import TargetPositionInCamera 
 
 # --- 从同一包的scripts目录导入其他模块 ---
 try:
@@ -20,7 +20,7 @@ except ImportError as e:
 from sensor_msgs.msg import JointState
 from kortex_driver.msg import BaseCyclic_Feedback
 
-class KinovaSimpleGraspController: # 重命名类以反映简化
+class KinovaSimpleGraspController: 
     def __init__(self):
         rospy.init_node('kinova_simple_grasp_controller', anonymous=False)
 

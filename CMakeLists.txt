@@ -56,6 +56,7 @@ add_message_files(
   FILES
   ArucoMarker.msg
   ArucoMarkerArray.msg
+  TargetPositionInCamera.msg
 )
 
 generate_messages(

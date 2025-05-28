@@ -4,7 +4,7 @@
     <arg name="robot_name" default="my_gen3_lite"/>
 
     <!-- Kinova Simple Grasp Controller Node -->
-    <node pkg="ee368_project" type="kinova_simple_grasp_controller.py" name="kinova_simple_grasp_controller" output="screen">
+    <node pkg="ee368_project" type="kinova_grasp.py" name="kinova_simple_grasp_controller" output="screen">
 
         <!-- Pass the robot_name to the node. -->
         <param name="robot_name" value="$(arg robot_name)"/>

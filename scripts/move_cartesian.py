@@ -11,7 +11,7 @@ from kortex_driver.msg import *
 class SimplifiedArmController:
     def __init__(self):
         try:
-            rospy.init_node('simplified_arm_controller_python')
+            #rospy.init_node('simplified_arm_controller_python')
 
             # Get node params
             self.robot_name = rospy.get_param('~robot_name', "my_gen3_lite")

@@ -1,0 +1,18 @@
+<launch>
+    <node pkg="ee368_project" type="chessboard_detector_node.py" name="chessboard_detector_node" output="screen">
+        <!-- Chessboard parameters: Number of INNER corners -->
+        <param name="chessboard_pattern_width" value="9" />  <!-- e.g., for a 10x7 board -->
+        <param name="chessboard_pattern_height" value="6" /> <!-- e.g., for a 10x7 board -->
+        
+        <!-- RealSense stream parameters -->
+        <param name="color_width" value="1280" />
+        <param name="color_height" value="720" />
+        <param name="depth_width" value="1280" />
+        <param name="depth_height" value="720" />
+        <param name="fps" value="30" />
+        
+        <!-- Other parameters -->
+        <param name="camera_frame_id" value="camera_color_optical_frame" />
+        <param name="show_cv_window" value="true" /> <!-- Set to false to disable OpenCV window -->
+    </node>
+</launch>

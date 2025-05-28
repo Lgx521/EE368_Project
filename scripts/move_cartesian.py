@@ -9,12 +9,12 @@ from kortex_driver.srv import *
 from kortex_driver.msg import *
 
 class SimplifiedArmController:
-    def __init__(self):
+    def __init__(self, robot_name_param="my_gen3_lite"):
         try:
             #rospy.init_node('simplified_arm_controller_python')
 
             # Get node params
-            self.robot_name = rospy.get_param('~robot_name', "my_gen3_lite")
+            self.robot_name = robot_name_param
             self.is_gripper_present = rospy.get_param("/" + self.robot_name + "/is_gripper_present", False)
 
             rospy.loginfo(f"Using robot_name {self.robot_name}, is_gripper_present: {self.is_gripper_present}")

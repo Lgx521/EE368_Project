@@ -59,5 +59,9 @@ $$
 面向`kinova_grasp.launch`与`kinova_grasp.py`的测试  
 目前就是传抓取地点的消息，示例消息如下：  
 ```shell
-rostopic pub -1 /kinova_grasp/target_position_in_camera ee368_project/TargetPositionInCamera '{object_id: "pawn_1", position_in_camera: {x: 0.05, y: -0.02, z: 0.1}}'
+rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoalInCamera \
+'{object_id_at_pick: "pawn_to_pick", \
+  pick_position_in_camera: {x: 0.05, y: -0.02, z: 0.4}, \
+  target_location_id_at_place: "target_square_D4", \
+  place_position_in_camera: {x: 0.15, y: 0.08, z: 0.38}}'
 ```

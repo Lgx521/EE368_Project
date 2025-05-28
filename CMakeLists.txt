@@ -56,7 +56,7 @@ add_message_files(
   FILES
   ArucoMarker.msg
   ArucoMarkerArray.msg
-  TargetPositionInCamera.msg
+  PickAndPlaceGoalInCamera.msg
 )
 
 generate_messages(

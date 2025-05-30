@@ -57,6 +57,7 @@ add_message_files(
   ArucoMarker.msg
   ArucoMarkerArray.msg
   PickAndPlaceGoalInCamera.msg
+  ChessboardCorners.msg
 )
 
 generate_messages(

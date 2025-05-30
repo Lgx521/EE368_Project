@@ -71,3 +71,6 @@ rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoal
 ### 棋盘角点检测
 角点检测在`chessboard_detector_node.py`中，其包含了自定义的消息类型分别发布四个棋盘角点在相机坐标系中的cartesian位置。  
 发布话题在`/chessboard_corners`，目前发布频率为30Hz，可调。  
+
+### AI下棋以及移动消息发送
+已经merge到main中了，实现AI下棋与移动消息发送，还未测试。  

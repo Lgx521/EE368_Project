@@ -1,0 +1,6 @@
+<launch>
+
+  <node pkg="ee368_project" type="chess_ai_node.py" name="chess_ai_node" output="screen" />
+  
+</launch>
+

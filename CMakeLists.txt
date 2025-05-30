@@ -131,6 +131,7 @@ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge message_runtim
 catkin_install_python(PROGRAMS
   scripts/aruco_subscriber_node.py
   scripts/aruco_detector_node.py
+  scripts/chess_ai_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

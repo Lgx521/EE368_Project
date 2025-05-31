@@ -163,13 +163,15 @@ class KinovaPickAndPlaceController:
             rospy.logwarn(f"Failed to move to pre-{action_name.lower()} position. Aborting {action_name}.")
             self.arm_controller.clear_robot_faults(); return False
 
-        if not is_pick_action:
+        # Step 2: Pre-action gripper manipulation or approach
+        if not is_pick_action: # This is a PLACE action
             rospy.loginfo(f"Step 2 ({action_name}): Approaching precise place Z...")
-        elif self.arm_controller.is_gripper_present:
-            rospy.loginfo(f"Step 2 ({action_name}): Opening gripper...")
-            rospy.sleep(1.0) # 确保手臂稳定后再操作夹爪
-            if not self.arm_controller.move_gripper(0.0): rospy.logwarn("Failed to open gripper.")
-            rospy.sleep(1.0) # 等待夹爪张开
+        elif self.arm_controller.is_gripper_present: # This is a PICK action and gripper is present
+            rospy.loginfo(f"Step 2 ({action_name}): Opening gripper to 50% for pick approach...")
+            rospy.sleep(1.0) # Ensure arm is stable before operating gripper
+            # MODIFIED: Open gripper to 0.5 (50%) before picking
+            if not self.arm_controller.move_gripper(0.5): rospy.logwarn("Failed to open gripper to 50%.")
+            rospy.sleep(1.0) # Wait for gripper to open
 
         rospy.loginfo(f"Step 3 ({action_name}): Moving to precise {action_name.lower()} Z position (X:{target_xyz_base[0]:.3f}, Y:{target_xyz_base[1]:.3f}, Z:{actual_gripper_target_z_base:.3f})...")
         if not self.arm_controller.move_to_cartesian_pose(
@@ -179,14 +181,19 @@ class KinovaPickAndPlaceController:
             self.arm_controller.clear_robot_faults(); return False
         rospy.sleep(0.5)
 
+        # Step 4: Gripper action (Close for Pick, Open for Place)
         if self.arm_controller.is_gripper_present:
             action_description = "Closing" if is_pick_action else "Opening"
-            gripper_target_value = rospy.get_param("~grasp_closure_percentage", 0.8) if is_pick_action else 0.2 # 放置时稍微张开一些
+            
+            # MODIFIED:
+            # For picking, close fully (1.0). Default of param changed from 0.8 to 1.0.
+            # For placing, open to 0.2 (20%).
+            gripper_target_value = rospy.get_param("~grasp_closure_percentage", 0.8) if is_pick_action else 0.2
             
             rospy.loginfo(f"Step 4 ({action_name}): {action_description} gripper to {gripper_target_value*100:.0f}%...")
-            rospy.sleep(0.5) # 确保手臂稳定
+            rospy.sleep(0.5) # Ensure arm is stable
             if not self.arm_controller.move_gripper(gripper_target_value): rospy.logwarn(f"Failed to {action_description.lower()} gripper.")
-            rospy.sleep(1.5)
+            rospy.sleep(1.5) # Wait for gripper action to complete
 
         rospy.loginfo(f"Step 5 ({action_name}): Lifting/Retreating from {action_name.lower()} point...")
         if not self.arm_controller.move_to_cartesian_pose(
@@ -237,11 +244,7 @@ class KinovaPickAndPlaceController:
 
         if not place_successful:
             rospy.logwarn("Place sequence failed.")
-            # 即使放置失败，也尝试回到home位
-        # else: # 只有当放置也成功时，才打印操作完成
-        #     rospy.loginfo("Pick and place operation completed successfully.")
         
-        # 无论放置是否成功，在尝试完放置后都回到 home 位置
         rospy.loginfo("Pick and place attempt finished. Returning to home position.")
         self._go_to_home_safe_position()
 

@@ -82,6 +82,8 @@ rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoal
 这个节点接收两个消息，分别是棋盘的四个角点坐标和棋盘矩阵，并且发布一个消息，即需要移动的棋子的当前坐标和目标坐标。在接收到两个消息之前节点不会发布任何消息。在接收到更新后的棋盘矩阵之前它也不会发布新消息。
 下面是如何发布这两个消息的示例。
 
+> 一次大更新：增加了一个`node_killer.py`，用于在这个节点接收到棋盘位置后自动kill掉`chessboard_detector_node`节点，避免棋盘计算造成影响
+
 ### 角点坐标
 
 ```shell

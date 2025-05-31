@@ -8,26 +8,49 @@ import numpy as np
 from std_msgs.msg import String
 from geometry_msgs.msg import Point
 from ee368_project.msg import PickAndPlaceGoalInCamera
+from ee368_project.msg import ChessboardCorners
 
 from elephant_fish import ai_move_from_matrix  
 
 class ChessAINode:
     def __init__(self):
         rospy.init_node('chess_ai_node')
-
-        self.current_board = None
+        self.init_board = np.array([['r','n','b','a','k','a','b','n','r'], 
+        [0,0,0,0,0,0,0,0,0], 
+        [0,'c',0,0,0,0,0,'c',0], ['p',0,'p',0,'p',0,'p',0,'p'], 
+        [0,0,0,0,0,0,0,0,0], 
+        [0,0,0,0,0,0,0,0,0], 
+        ['P',0,'P',0,'P',0,'P',0,'P'], 
+        [0,'C',0,0,0,0,0,'C',0], 
+        [0,0,0,0,0,0,0,0,0], ['R','N','B','A','K','A','B','N','R']])
+        self.current_board = self.init_board       
         self.last_board = None
         self.is_ai_turn = False
 
         self.board_sub = rospy.Subscriber("/chess_board_matrix", String, self.board_callback)
+        self.corner_sub = rospy.Subscriber("/chessboard_corners", ChessboardCorners, self.corner_callback)
         self.coord_pub = rospy.Publisher("/kinova_pick_place/goal_in_camera", PickAndPlaceGoalInCamera, queue_size=10)
 
-        self.top_left = Point(x=-0.17,y=0.07,z=0.63)
-        self.top_right = Point(x=-0.18,y=-0.13,z=0.63)
-        self.bottom_left = Point(x=0.18,y=0.06,z=0.67)
-        self.bottom_right = Point(x=0.16,y=-0.15,z=0.65)
+
+        self.top_left = None
+        self.top_right = None
+        self.bottom_left = None
+        self.bottom_right = None
 
         self.rate = rospy.Rate(10)
+
+    def corner_callback(self,msg):
+        self.top_left = msg.top_left
+        self.top_right = msg.top_right
+        self.bottom_left = msg.bottom_left
+        self.bottom_right = msg.bottom_right
+        
+        # 打印接收到的坐标
+        rospy.loginfo("Received chessboard corners")
+        rospy.loginfo("Top Left: (%.2f, %.2f, %.2f)", self.top_left.x, self.top_left.y, self.top_left.z)
+        rospy.loginfo("Top Right: (%.2f, %.2f, %.2f)", self.top_right.x, self.top_right.y, self.top_right.z)
+        rospy.loginfo("Bottom Left: (%.2f, %.2f, %.2f)", self.bottom_left.x, self.bottom_left.y, self.bottom_left.z)
+        rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)   
 
     def board_callback(self, msg):
         try:
@@ -35,6 +58,10 @@ class ChessAINode:
             if self.current_board is None or not np.array_equal(board, self.current_board):
                 self.current_board = board
                 rospy.loginfo("Received updated board.")
+                rospy.loginfo("Board equals init? %s", np.array_equal(self.current_board, self.init_board))
+                rospy.loginfo("Received board: %s", self.current_board.tolist())
+                rospy.loginfo("Init board: %s", self.init_board.tolist())
+
         except Exception as e:
             rospy.logerr("Error parsing board message: %s", str(e))
 
@@ -48,6 +75,11 @@ class ChessAINode:
 
     def run(self):
         while not rospy.is_shutdown():
+            if not all([self.top_left, self.top_right, self.bottom_left, self.bottom_right]):
+                rospy.logwarn("Waiting for chessboard corners...")
+                self.rate.sleep()
+                continue
+
             if self.current_board is None:
                 self.rate.sleep()
                 continue
@@ -79,7 +111,7 @@ class ChessAINode:
                 self.rate.sleep()
                 continue
 
-            if self.last_board is None or not np.array_equal(self.current_board, self.last_board):
+            if (self.last_board is None or not np.array_equal(self.current_board, self.last_board)) and not np.array_equal(self.current_board,self.init_board):
                 rospy.sleep(0.5)  # optional debounce
                 rospy.loginfo("User move detected. Switching to AI.")
                 self.is_ai_turn = True

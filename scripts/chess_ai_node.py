@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import time
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 import rospy
@@ -39,6 +40,18 @@ class ChessAINode:
 
         self.rate = rospy.Rate(10)
 
+    def talker(self):
+        """用于接收到棋盘的角点位置信息后就终止角点检测节点的运行"""
+
+        pub = rospy.Publisher('/kill_trigger', String, queue_size=10)
+
+        if not rospy.is_shutdown():
+            kill_msg_str = "Time to kill from hypothetical_trigger_node"
+            rospy.loginfo("Sending kill signal: %s" % kill_msg_str)
+            pub.publish(kill_msg_str)
+            rospy.loginfo("Signal sent. Shutting down hypothetical trigger node.")
+
+
     def corner_callback(self,msg):
         self.top_left = msg.top_left
         self.top_right = msg.top_right
@@ -51,6 +64,8 @@ class ChessAINode:
         rospy.loginfo("Top Right: (%.2f, %.2f, %.2f)", self.top_right.x, self.top_right.y, self.top_right.z)
         rospy.loginfo("Bottom Left: (%.2f, %.2f, %.2f)", self.bottom_left.x, self.bottom_left.y, self.bottom_left.z)
         rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)   
+
+        self.talker()
 
     def board_callback(self, msg):
         try:
@@ -69,8 +84,7 @@ class ChessAINode:
         x = self.bottom_left.x + x_value/8*(self.bottom_right.x-self.bottom_left.x) + y_value/9*(self.top_left.x-self.bottom_left.x)
         y = self.bottom_left.y + x_value/8*(self.bottom_right.y-self.bottom_left.y) + y_value/9*(self.top_left.y-self.bottom_left.y)
         z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
-        return Point(x=x, y=y, z=z)
-
+        return Point(x=x, y=y, z=z-0.1)
 
 
     def run(self):

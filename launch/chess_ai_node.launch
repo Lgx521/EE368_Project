@@ -1,6 +1,7 @@
 <launch>
 
   <node pkg="ee368_project" type="chess_ai_node.py" name="chess_ai_node" output="screen" />
+  <node pkg="ee368_project" type="node_killer.py" name="node_killer" output="screen" />
   
 </launch>
 

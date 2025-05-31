@@ -51,6 +51,9 @@ class ChessAINode:
             pub.publish(kill_msg_str)
             rospy.loginfo("Signal sent. Shutting down hypothetical trigger node.")
 
+        # 停止订阅这个节点
+        self.board_sub.unregister()
+
 
     def corner_callback(self,msg):
         self.top_left = msg.top_left
@@ -84,6 +87,9 @@ class ChessAINode:
         x = self.bottom_left.x + x_value/8*(self.bottom_right.x-self.bottom_left.x) + y_value/9*(self.top_left.x-self.bottom_left.x)
         y = self.bottom_left.y + x_value/8*(self.bottom_right.y-self.bottom_left.y) + y_value/9*(self.top_left.y-self.bottom_left.y)
         z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
+
+        # 下面算是一个小的调参，用于确定抓取时的z平面
+
         return Point(x=x, y=y, z=z-0.1)
 
 

@@ -21,7 +21,7 @@
 
         <!-- Gripper closure percentage when grasping (0.0 = open, 1.0 = closed). -->
         <!-- Adjust based on your gripper and objects. -->
-        <param name="grasp_closure_percentage" value="0.65"/>
+        <param name="grasp_closure_percentage" value="1"/>
 
     </node>
 

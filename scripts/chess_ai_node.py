@@ -90,7 +90,7 @@ class ChessAINode:
 
         # 下面算是一个小的调参，用于确定抓取时的z平面
 
-        return Point(x=x, y=y, z=z-0.1)
+        return Point(x=x, y=y, z=z-0.041)
 
 
     def run(self):
@@ -103,6 +103,8 @@ class ChessAINode:
             if self.current_board is None:
                 self.rate.sleep()
                 continue
+
+            # rospy.loginfo("Board loc and initiallization finished")
 
             if self.is_ai_turn:
                 rospy.loginfo("AI thinking...")
@@ -130,6 +132,9 @@ class ChessAINode:
 
                 self.rate.sleep()
                 continue
+
+            if np.array_equal(self.current_board, self.last_board) or np.array_equal(self.current_board,self.init_board):
+                rospy.logwarn("SAME BOARD STATUS")
 
             if (self.last_board is None or not np.array_equal(self.current_board, self.last_board)) and not np.array_equal(self.current_board,self.init_board):
                 rospy.sleep(0.5)  # optional debounce

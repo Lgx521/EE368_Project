@@ -36,6 +36,8 @@ class ChessAINode:
         self.top_right = None
         self.bottom_left = None
         self.bottom_right = None
+        self.garbage_point = None
+
 
         self.rate = rospy.Rate(10)
 
@@ -44,6 +46,10 @@ class ChessAINode:
         self.top_right = msg.top_right
         self.bottom_left = msg.bottom_left
         self.bottom_right = msg.bottom_right
+        self.garbage_point = Point()
+        self.garbage_point.x = 2 * self.bottom_left.x - self.bottom_right.x
+        self.garbage_point.y = 2 * self.bottom_left.y - self.bottom_right.y
+        self.garbage_point.z = 2 * self.bottom_left.z - self.bottom_right.z      
         
         # 打印接收到的坐标
         rospy.loginfo("Received chessboard corners")
@@ -91,15 +97,24 @@ class ChessAINode:
                 if ai_board is not None:
                     
                     if start and end:
-                        msg = PickAndPlaceGoalInCamera()
-                        msg.object_id_at_pick = ""
-                        msg.pick_position_in_camera = self.matrix_to_point(start[0],start[1])
-                        msg.target_location_id_at_place = ""
-                        msg.place_position_in_camera = self.matrix_to_point(end[0],end[1])
+                        if self.current_board[9-end[1]][end[0]] != '0':
+                            rospy.loginfo("chess eating detected")
+                            msg0 = PickAndPlaceGoalInCamera()
+                            msg0.object_id_at_pick = ""
+                            msg0.pick_position_in_camera = self.matrix_to_point(end[0],end[1])
+                            msg0.target_location_id_at_place = ""
+                            msg0.place_position_in_camera = self.garbage_point
+                            self.coord_pub.publish(msg0)
+                            rospy.sleep(20)  
 
-                        self.coord_pub.publish(msg)
+                        msg1 = PickAndPlaceGoalInCamera()
+                        msg1.object_id_at_pick = ""
+                        msg1.pick_position_in_camera = self.matrix_to_point(start[0],start[1])
+                        msg1.target_location_id_at_place = ""
+                        msg1.place_position_in_camera = self.matrix_to_point(end[0],end[1])
+                        self.coord_pub.publish(msg1)
                         rospy.loginfo(f"AI move published: from {self.matrix_to_point(start[0],start[1])} to {self.matrix_to_point(end[0],end[1])}")
-
+                        rospy.loginfo(f"AI move published: from {start[0],start[1]} to {end[0],end[1]}")
                         self.current_board = ai_board.copy()  # 更新当前棋盘状态
                         self.last_board = ai_board.copy()
                         self.is_ai_turn = False

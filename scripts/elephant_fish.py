@@ -430,42 +430,90 @@ def print_pos(pos):
         print(' ', 9 - i, ''.join(uni_pieces.get(p, p) for p in row))
     print('    ａｂｃｄｅｆｇｈｉ\n\n')
 
-def matrix_to_position(np_board):
-    """将 9x10 的 numpy 棋盘转换为 Position 对象"""
+def matrix_to_position(np_board,score):
+    """
+    将一个 10×9 的 numpy 字符串棋盘（空格用 '0' 表示）转换成内部 256 格的 Position 对象。
+    - 外部 np_board[y,x] == '0' 时视为空格（'.'），否则就是棋子字符（如 'p','P','r','R' 等）。
+    """
     board = [' '] * 256
-    for y in range(10):       # 行（从上往下）
-        for x in range(9):    # 列（从左往右）
-            c = np_board[y, x]
-            i = (3 + y) * 16 + (3 + x)
-            board[i] = c if c != 0 else '.'
-    return Position(''.join(board), 0)
+    for y in range(10):
+        for x in range(9):
+            c = np_board[y, x]           # 一定是字符串类型
+            i = (3 + y) * 16 + (3 + x)   # 内部 16×16 棋盘索引
+            board[i] = '.' if c == '0' else c
+    return Position(''.join(board), score)  # 这里保证所有放入 board 的都是单字符
 
 def position_to_matrix(pos):
-    """将 Position 对象转换为 9x10 的 numpy 棋盘"""
+    """
+    将内部 Position 对象还原成 10×9 的 numpy 字符串棋盘：
+    - 内部的 '.' 映回外部的 '0'；
+    - 其他字符原样输出。
+    """
     np_board = np.zeros((10, 9), dtype=object)
     for y in range(10):
         for x in range(9):
             i = (3 + y) * 16 + (3 + x)
             c = pos.board[i]
-            np_board[y, x] = c if c != '.' else 0
-    return np_board
+            np_board[y, x] = '0' if c == '.' else c
+    return np_board                         # 保持外部纯字符串格式
 
-def ai_move_from_matrix(np_board):
-    """
-    输入：当前棋盘（9x10 矩阵，棋子为字符，空为0）
-    输出：AI（默认黑方）走一步后的新棋盘（9x10 矩阵）
-    """
-    pos = matrix_to_position(np_board)
-    searcher = Searcher()
-    for _depth, move, score in searcher.search(pos):
-        if move is not None:
-            new_pos = pos.move(move)
-            start = render_to_numpy_array(render(255 - move[0] - 1))
-            end = render_to_numpy_array(render(255 - move[1] - 1))
-            return position_to_matrix(new_pos),start,end
-    return None,None,None
 
-def render_to_numpy_array(render_move:str): 
+
+# 全局变量：累计局面分数，先置 0
+global_score = 0
+hist = []
+searcher = Searcher()
+
+def ai_move_from_matrix(board):
+    """
+    先把外部 10×9 棋盘转成 Position，
+    ➜ 立即 rotate() 成“黑方视角”再送给搜索器，
+      这样后面 render(255-idx-1) 的反转和 copy 版完全对应。
+    """
+    global global_score
+
+    # ---------- ① 先旋转 ----------
+    pos = matrix_to_position(board, global_score).rotate()   # ★关键改动
+    hist.clear()                                             # 建议每次调用都清空历史
+    hist.append(pos)
+
+    # 打印给人类看，要再旋转回来
+    print_pos(hist[-1].rotate())
+
+    # ---------- ② 搜索 ----------
+    start = time.time()
+    for _depth, move, score in searcher.search(hist[-1], hist):
+        if time.time() - start > THINK_TIME:
+            break
+
+    # 搜索得出的走法仍在“黑方视角”，因此继续用 255-idx-1 反转坐标
+    print("Think depth: {} My move: {}".format(
+        _depth,
+        render(255 - move[0] - 1) + render(255 - move[1] - 1))
+    )
+
+    start = render_to_numpy_array(render(255 - move[0] - 1))
+    end = render_to_numpy_array(render(255 - move[1] - 1))
+
+    # 更新局面并保存分数
+    hist.append(hist[-1].move(move))
+    print_pos(hist[-1])
+    ai_board = position_to_matrix((hist[-1]))
+    global_score = hist[-1].score
+
+    if hist[-1].score <= -MATE_LOWER:
+        print("You won")
+        return None,None,None
+
+    if -hist[-1].score <= -MATE_LOWER:
+        print("You lost")
+        return None,None,None
+    if score == MATE_UPPER:
+        print("Checkmate!")
+        return None,None,None
+    return ai_board,start,end
+
+def render_to_numpy_array(render_move:str):
     #This function give the position of chess.Upward and rightward orientations are positive.
     alphabet = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7,'i':8}
     x_value = int(alphabet[render_move[0]])

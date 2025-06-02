@@ -7,7 +7,7 @@ import cv2.aruco as aruco
 import numpy as np
 import pyrealsense2 as rs
 from geometry_msgs.msg import Point
-from sensor_msgs import Image
+from sensor_msgs.msg import Image
 from std_msgs.msg import Header # 用于自定义消息中的header
 # 导入你的自定义消息
 from ee368_project.msg import ChessboardCorners # 确保包名正确

@@ -188,7 +188,7 @@ class SimplifiedArmController:
         # For now, let's assume a "safe" or "retract" position instead of full API home.
         rospy.loginfo("Homing action (moving to a predefined safe pose) requested.")
 
-        home_x, home_y, home_z = 0.30, 0.10, 0.30  # 抓取的预位z=0.025，下放5cm到z=-0.025
+        home_x, home_y, home_z = 0.30, 0.10, 0.25  # 抓取的预位z=0.025，下放5cm到z=-0.025
         
         home_thx, home_thy, home_thz = 0.0, 180.0, 45.0 # Tool pointing down
 

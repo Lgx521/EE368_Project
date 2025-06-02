@@ -42,20 +42,6 @@ class ChessAINode:
 
         self.rate = rospy.Rate(10)
 
-    def talker(self):
-        """用于接收到棋盘的角点位置信息后就终止角点检测节点的运行"""
-
-        pub = rospy.Publisher('/kill_trigger', String, queue_size=10)
-
-        if not rospy.is_shutdown():
-            kill_msg_str = "Time to kill from hypothetical_trigger_node"
-            rospy.loginfo("Sending kill signal: %s" % kill_msg_str)
-            pub.publish(kill_msg_str)
-            rospy.loginfo("Signal sent. Shutting down hypothetical trigger node.")
-
-        # 停止订阅这个节点
-        self.board_sub.unregister()
-
 
     def corner_callback(self,msg):
         self.top_left = msg.top_left
@@ -74,8 +60,7 @@ class ChessAINode:
         rospy.loginfo("Bottom Left: (%.2f, %.2f, %.2f)", self.bottom_left.x, self.bottom_left.y, self.bottom_left.z)
         rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)   
 
-        # self.talker()
-        # 测试：不终止节点，只是停止订阅他的消息
+        # 停止订阅消息，避免干扰
         self.board_sub.unregister()
 
     def board_callback(self, msg):

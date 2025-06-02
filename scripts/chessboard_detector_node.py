@@ -100,7 +100,7 @@ class ChessboardArucoCornersROS:
         # 假设标签的局部坐标系原点在中心，X轴向右，Y轴向下（与OpenCV图像惯例匹配），Z轴向外。
         # 那么左上角是 (-s/2, -s/2, 0)
         # MODIFIED: Corrected to truly represent top-left corner (-s/2, -s/2, 0)
-        self.target_corner_in_marker_coords = np.array([[-self.s_half], [-self.s_half], [0.0]], dtype=np.float32)
+        self.target_corner_in_marker_coords = np.array([[-self.s_half], [self.s_half], [0.0]], dtype=np.float32)
         rospy.loginfo(f"目标3D角点在标签局部坐标系 (左上角物理边界, X右Y下Z外): {self.target_corner_in_marker_coords.flatten()}")
 
         rospy.loginfo("RealSense相机内参 (fx, fy, cx, cy):")

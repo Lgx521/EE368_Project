@@ -28,9 +28,9 @@ class KinovaPickAndPlaceController:
     STATE_ERROR = 2
 
     # --- 机械臂状态对应的发布消息 ---
-    MSG_ARM_IDLE = "IDLE"
-    MSG_ARM_BUSY = "BUSY"
-    MSG_ARM_ERROR = "ERROR"
+    MSG_ARM_IDLE = "0"
+    MSG_ARM_BUSY = "1"
+    MSG_ARM_ERROR = "2"
 
     def __init__(self):
         rospy.init_node('kinova_pick_and_place_controller', anonymous=False)

@@ -42,7 +42,7 @@ class KinovaPickAndPlaceController:
 
         self.fk_calculator = FKCalculator(Dof=6)
 
-        T_ee_camera_mm_translation = np.array([60.0, 0.0, -110.0])
+        T_ee_camera_mm_translation = np.array([60.0, -40.0, -110.0])
         R_ee_camera = np.array([[0., -1.,  0.], [1.,  0.,  0.], [0.,  0.,  1.]])
         self.T_ee_camera = np.identity(4)
         self.T_ee_camera[:3,:3] = R_ee_camera
@@ -170,7 +170,7 @@ class KinovaPickAndPlaceController:
             rospy.loginfo(f"Step 2 ({action_name}): Opening gripper to 50% for pick approach...")
             rospy.sleep(1.0) # Ensure arm is stable before operating gripper
             # MODIFIED: Open gripper to 0.5 (50%) before picking
-            if not self.arm_controller.move_gripper(0.5): rospy.logwarn("Failed to open gripper to 50%.")
+            if not self.arm_controller.move_gripper(0.4): rospy.logwarn("Failed to open gripper to 40%.")
             rospy.sleep(1.0) # Wait for gripper to open
 
         rospy.loginfo(f"Step 3 ({action_name}): Moving to precise {action_name.lower()} Z position (X:{target_xyz_base[0]:.3f}, Y:{target_xyz_base[1]:.3f}, Z:{actual_gripper_target_z_base:.3f})...")
@@ -188,7 +188,7 @@ class KinovaPickAndPlaceController:
             # MODIFIED:
             # For picking, close fully (1.0). Default of param changed from 0.8 to 1.0.
             # For placing, open to 0.2 (20%).
-            gripper_target_value = rospy.get_param("~grasp_closure_percentage", 0.8) if is_pick_action else 0.2
+            gripper_target_value = rospy.get_param("~grasp_closure_percentage", 0.75) if is_pick_action else 0.4
             
             rospy.loginfo(f"Step 4 ({action_name}): {action_description} gripper to {gripper_target_value*100:.0f}%...")
             rospy.sleep(0.5) # Ensure arm is stable

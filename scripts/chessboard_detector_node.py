@@ -7,6 +7,7 @@ import cv2.aruco as aruco
 import numpy as np
 import pyrealsense2 as rs
 from geometry_msgs.msg import Point
+from sensor_msgs.msg import Image
 from std_msgs.msg import Header # 用于自定义消息中的header
 # 导入你的自定义消息
 from ee368_project.msg import ChessboardCorners # 确保包名正确
@@ -97,6 +98,9 @@ class ChessboardArucoCornersROS:
         rospy.loginfo("ArUco棋盘角点检测节点已初始化。发布到 /chessboard_corners")
         rospy.on_shutdown(self.shutdown_hook)
 
+        # -- 发布图像 --
+        self.image_pub = rospy.Publisher("/camera/color/image_raw", Image, queue_size=10)
+
     def process_frame(self):
         try:
             frames = self.pipeline.wait_for_frames(timeout_ms=1000)
@@ -161,6 +165,28 @@ class ChessboardArucoCornersROS:
             rospy.logwarn_throttle(1, f"检测到ArUco标签，但未集齐所有棋盘角点。已检测: {list(detected_corner_positions.keys())}")
         else:
             rospy.logwarn_throttle(5, "未检测到ArUco标签。")
+
+        # -- 接下来为发布图像消息 --
+        ros_image_msg = Image()
+        ros_image_msg.header.stamp = rospy.Time.now() # 使用ROS当前时间戳
+        ros_image_msg.header.frame_id = 'camera_color_optical_frame'
+            
+        ros_image_msg.height = color_image.shape[0]
+        ros_image_msg.width = color_image.shape[1]
+
+        ros_image_msg.encoding = "bgr8" 
+        ros_image_msg.is_bigendian = 0
+
+        # step: 每一行的字节数 = 宽度 * 通道数 * 每个通道的字节数
+        # 对于bgr8: width * 3 channels * 1 byte/channel
+        ros_image_msg.step = color_image.shape[1] * 3 
+
+        # data: 图像的原始字节数据
+        ros_image_msg.data = color_image.tobytes()
+
+        # Publishing
+        self.image_pub.publish(ros_image_msg)
+
 
 
         if self.show_cv_window:

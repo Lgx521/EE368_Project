@@ -74,7 +74,9 @@ class ChessAINode:
         rospy.loginfo("Bottom Left: (%.2f, %.2f, %.2f)", self.bottom_left.x, self.bottom_left.y, self.bottom_left.z)
         rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)   
 
-        self.talker()
+        # self.talker()
+        # 测试：不终止节点，只是停止订阅他的消息
+        self.board_sub.unregister()
 
     def board_callback(self, msg):
         try:

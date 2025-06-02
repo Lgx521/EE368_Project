@@ -10,7 +10,7 @@ from std_msgs.msg import Header # 主要用于Image消息中的header
 # 可配置参数
 IMG_WIDTH = 1280
 IMG_HEIGHT = 720
-FPS = 10
+FPS = 30
 TOPIC_NAME = '/camera/color/image_raw' # 标准的ROS图像话题名称
 FRAME_ID = 'camera_color_optical_frame' # 标准的ROS TF frame ID
 

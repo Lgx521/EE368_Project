@@ -31,12 +31,11 @@ num_joints = len(dh_parameters)
 joint_limits_rad = None # 或者定义如下
 # joint_limits_rad = [[-2*pi, 2*pi]] * num_joints # 比较宽松的示例
 
-# --- 辅助函数 (与你之前的代码相同或类似) ---
 def dh_transform_matrix(alpha, a, d, theta):
     A = np.array([
-        [np.cos(theta), -np.sin(theta)*np.cos(alpha),  np.sin(theta)*np.sin(alpha), a*np.cos(theta)],
-        [np.sin(theta),  np.cos(theta)*np.cos(alpha), -np.cos(theta)*np.sin(alpha), a*np.sin(theta)],
-        [0,              np.sin(alpha),               np.cos(alpha),              d],
+        [np.cos(theta), -np.sin(theta), 0, a],
+        [np.sin(theta)*np.cos(alpha),  np.cos(theta)*np.cos(alpha), -np.sin(alpha), -np.sin(alpha)*d],
+        [np.sin(theta)*np.sin(alpha),  np.cos(theta)*np.sin(alpha), np.cos(alpha),   np.cos(alpha) * d],
         [0,              0,                           0,                          1]
     ])
     return A
@@ -165,8 +164,8 @@ if __name__ == "__main__":
     print("6-DoF Inverse Kinematics SciPy Optimizer Solver\n")
 
     # 1. 定义目标位姿
-    target_position = np.array([0.435, 0.194, 0.457]) # meters
-    target_orientation_euler = np.array([pi/2, 0, 150*pi/180]) # radians (roll, pitch, yaw)
+    target_position = np.array([0.3, 0.1, 0.3]) # meters
+    target_orientation_euler = np.array([0, pi, pi/4]) # radians (roll, pitch, yaw)
     
     target_rotation_matrix = R.from_euler('xyz', target_orientation_euler, degrees=False).as_matrix()
     T_target = np.eye(4)
@@ -202,18 +201,18 @@ if __name__ == "__main__":
         initial_joint_angles_rad,
         dh_parameters,
         joint_limits=example_joint_limits,
-        pos_weight=1.0,       # 位置误差的权重
+        pos_weight=5.0,       # 位置误差的权重
         ori_weight=1.0,       # 姿态误差的权重 (可以调整，例如如果姿态更重要，给更大权重)
-        pos_tolerance=1e-5,
+        pos_tolerance=1e-4,
         ori_tolerance=1e-4,
-        max_iterations=500,  # 优化器的最大迭代次数
+        max_iterations=300,  # 优化器的最大迭代次数
         optimizer_ftol=1e-8  # 优化器目标函数值的收敛阈值
     )
 
     print("-" * 30)
     if converged:
-        print("IK Solution Found (Joint Angles in radians):")
-        print(np.round(solution_q, 4))
+        print("IK Solution Found (Joint Angles in deg):")
+        print(np.round(solution_q*180/pi, 2))
         
         T_solution, _ = forward_kinematics(solution_q, dh_parameters)
         print("\nFK of Solution (Homogeneous Matrix):")

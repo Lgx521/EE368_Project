@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import os
-import time
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 import rospy
@@ -38,24 +37,11 @@ class ChessAINode:
         self.bottom_left = None
         self.bottom_right = None
         self.garbage_point = None
-
+        self.distance = None
+        self.eat_turn = 0
+        self.garbage_place = None
 
         self.rate = rospy.Rate(10)
-
-    def talker(self):
-        """用于接收到棋盘的角点位置信息后就终止角点检测节点的运行"""
-
-        pub = rospy.Publisher('/kill_trigger', String, queue_size=10)
-
-        if not rospy.is_shutdown():
-            kill_msg_str = "Time to kill from hypothetical_trigger_node"
-            rospy.loginfo("Sending kill signal: %s" % kill_msg_str)
-            pub.publish(kill_msg_str)
-            rospy.loginfo("Signal sent. Shutting down hypothetical trigger node.")
-
-        # 停止订阅这个节点
-        self.board_sub.unregister()
-
 
     def corner_callback(self,msg):
         self.top_left = msg.top_left
@@ -63,18 +49,28 @@ class ChessAINode:
         self.bottom_left = msg.bottom_left
         self.bottom_right = msg.bottom_right
         self.garbage_point = Point()
-        self.garbage_point.x = 2 * self.bottom_left.x - self.bottom_right.x
-        self.garbage_point.y = 2 * self.bottom_left.y - self.bottom_right.y
-        self.garbage_point.z = 2 * self.bottom_left.z - self.bottom_right.z      
-        
+        self.garbage_point.x = 2 * self.top_right.x - self.top_left.x
+        self.garbage_point.y = 2 * self.top_right.y - self.top_left.y  
+        self.garbage_point.z = 2 * self.top_right.z - self.top_left.z  
+        self.distance = Point()
+        self.distance.x = (self.top_right.x - self.bottom_right.x)/9*self.eat_turn
+        self.distance.y = (self.top_right.y - self.bottom_right.y)/9*self.eat_turn
+        self.distance.z = (self.top_right.z - self.bottom_right.z)/9*self.eat_turn
+        self.garbage_place = Point()
+        self.garbage_place.x = self.garbage_point.x - self.distance.x
+        self.garbage_place.y = self.garbage_point.y - self.distance.y
+        self.garbage_place.z = self.garbage_point.z - self.distance.z
+
+                     
         # 打印接收到的坐标
         rospy.loginfo("Received chessboard corners")
         rospy.loginfo("Top Left: (%.2f, %.2f, %.2f)", self.top_left.x, self.top_left.y, self.top_left.z)
         rospy.loginfo("Top Right: (%.2f, %.2f, %.2f)", self.top_right.x, self.top_right.y, self.top_right.z)
         rospy.loginfo("Bottom Left: (%.2f, %.2f, %.2f)", self.bottom_left.x, self.bottom_left.y, self.bottom_left.z)
-        rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)   
-
-        self.talker()
+        rospy.loginfo("Bottom Right: (%.2f, %.2f, %.2f)", self.bottom_right.x, self.bottom_right.y, self.bottom_right.z)
+        self.corner_sub.unregister()
+        rospy.loginfo("Unsubscribed from /chessboard_corners after receiving first message.")
+  
 
     def board_callback(self, msg):
         try:
@@ -93,10 +89,8 @@ class ChessAINode:
         x = self.bottom_left.x + x_value/8*(self.bottom_right.x-self.bottom_left.x) + y_value/9*(self.top_left.x-self.bottom_left.x)
         y = self.bottom_left.y + x_value/8*(self.bottom_right.y-self.bottom_left.y) + y_value/9*(self.top_left.y-self.bottom_left.y)
         z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
+        return Point(x=x, y=y, z=z)
 
-        # 下面算是一个小的调参，用于确定抓取时的z平面
-
-        return Point(x=x, y=y, z=z-0.041)
 
 
     def run(self):
@@ -110,8 +104,6 @@ class ChessAINode:
                 self.rate.sleep()
                 continue
 
-            # rospy.loginfo("Board loc and initiallization finished")
-
             if self.is_ai_turn:
                 rospy.loginfo("AI thinking...")
                 ai_board,start,end = ai_move_from_matrix(self.current_board)
@@ -121,11 +113,12 @@ class ChessAINode:
                     if start and end:
                         if self.current_board[9-end[1]][end[0]] != '0':
                             rospy.loginfo("chess eating detected")
+                            self.eat_turn += 1
                             msg0 = PickAndPlaceGoalInCamera()
                             msg0.object_id_at_pick = ""
                             msg0.pick_position_in_camera = self.matrix_to_point(end[0],end[1])
                             msg0.target_location_id_at_place = ""
-                            msg0.place_position_in_camera = self.garbage_point
+                            msg0.place_position_in_camera = self.garbage_place
                             self.coord_pub.publish(msg0)
                             rospy.sleep(20)  
 
@@ -147,9 +140,6 @@ class ChessAINode:
 
                 self.rate.sleep()
                 continue
-
-            if np.array_equal(self.current_board, self.last_board) or np.array_equal(self.current_board,self.init_board):
-                rospy.logwarn("SAME BOARD STATUS")
 
             if (self.last_board is None or not np.array_equal(self.current_board, self.last_board)) and not np.array_equal(self.current_board,self.init_board):
                 rospy.sleep(0.5)  # optional debounce

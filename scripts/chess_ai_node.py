@@ -10,11 +10,15 @@ from geometry_msgs.msg import Point
 from ee368_project.msg import PickAndPlaceGoalInCamera
 from ee368_project.msg import ChessboardCorners
 
+from ee368_project.msg import RegionMatrix
+
 from elephant_fish import ai_move_from_matrix  
 
 class ChessAINode:
     def __init__(self):
         rospy.init_node('chess_ai_node')
+        
+        self.init_board = rospy.Subscriber('/chess_board_matrix', RegionMatrix, self.matrix_callback)
         self.init_board = np.array([['r','n','b','a','k','a','b','n','r'], 
         [0,0,0,0,0,0,0,0,0], 
         [0,'c',0,0,0,0,0,'c',0], ['p',0,'p',0,'p',0,'p',0,'p'], 
@@ -77,6 +81,64 @@ class ChessAINode:
         self.corner_sub.unregister()
         rospy.loginfo("Unsubscribed from /chessboard_corners after receiving first message.")
   
+    def matrix_callback(self, msg):
+        """
+        回调函数：将RegionMatrix消息转换为NumPy数组
+        """
+        try:
+            # 获取原始矩阵字符串（不是扁平化的数组）
+            matrix_str = msg.data
+            print(matrix_str)
+            
+            # 调用修改后的函数（支持原始矩阵字符串）
+            self.current_board = self.string_to_numpy_matrix(matrix_str)
+            print(self.current_board)
+            
+            rospy.loginfo(f"Board shape: {self.current_board.shape}")
+            
+        except Exception as e:
+            rospy.logerr(f"Error parsing board message: {str(e)}")
+
+    def string_to_numpy_matrix(self, matrix_str):
+        # Step 1: Split into lines and clean each line
+        lines = matrix_str.splitlines()
+
+        cleaned_lines = []
+        
+        for line in lines:
+            # Remove extra spaces and split into elements
+            elements = [elem.strip() for elem in line.split()]
+            cleaned_lines.append(elements)
+        
+        # Step 2: Ensure consistent dimensions (10 rows x 9 columns)
+        # Pad or truncate as needed
+        standard_rows = 10
+        standard_cols = 9
+        
+        # Initialize empty matrix
+        matrix = []
+        
+        for i in range(standard_rows):
+            if i < len(cleaned_lines):
+                current_row = cleaned_lines[i]
+                # Pad or truncate the row to 9 elements
+                if len(current_row) < standard_cols:
+                    # Pad with empty strings if row is too short
+                    padded_row = current_row + [''] * (standard_cols - len(current_row))
+                elif len(current_row) > standard_cols:
+                    # Truncate if row is too long
+                    padded_row = current_row[:standard_cols]
+                else:
+                    padded_row = current_row
+                matrix.append(padded_row)
+            else:
+                # Add empty row if we have fewer lines than standard_rows
+                matrix.append([''] * standard_cols)
+        
+        # Step 3: Convert to NumPy array
+        np_matrix = np.array(matrix, dtype=object)
+        
+        return np_matrix
 
     def board_callback(self, msg):
         try:

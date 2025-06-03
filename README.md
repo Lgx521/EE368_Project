@@ -62,10 +62,20 @@ $$
 rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoalInCamera \
 '{
   object_id_at_pick: "red_pawn_A1",
-  pick_position_in_camera: {x: 0.0, y: 0.0, z: 0.42},
+  pick_position_in_camera: {x: 0.0, y: 0.0, z: 0.43},
   target_location_id_at_place: "empty_square_D4",
-  place_position_in_camera: {x: 0.12, y: 0.12, z: 0.42}
+  place_position_in_camera: {x: 0.12, y: 0.12, z: 0.43}
 }'
+```
+
+```shell
+rostopic pub -1 /kinova_pick_place/goal_in_camera ee368_project/PickAndPlaceGoalInCamera '{
+  object_id_at_pick: "red_pawn_A1",
+  pick_position_in_camera: {x: 0.12, y: 0.12, z: 0.43}, 
+  target_location_id_at_place: "empty_square_D4",
+  place_position_in_camera: {x: 0.0, y: 0.0, z: 0.43}
+}'
+publishing and latching message for 3.0 seconds
 ```
 
 ### 棋盘角点检测
@@ -167,3 +177,8 @@ y: 0.015277777777777784
 z: 0.633888888888889
 [INFO] [1748763273.905657]: AI move published: from (1, 9) to (2, 7) #发布的是同一条消息
 ```
+
+---
+## 新的调整
+1. chess_ai里面的z坐标直接写死了，保证不会撞向桌面  
+2. kinova_grasp里面添加了一个机械臂状态话题的发送，分为IDLE，BUSY以及ERROR三种情况，避免了冲突的产生    

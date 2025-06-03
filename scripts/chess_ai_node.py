@@ -30,8 +30,10 @@ class ChessAINode:
         self.board_sub = rospy.Subscriber("/chess_board_matrix", String, self.board_callback)
         self.corner_sub = rospy.Subscriber("/chessboard_corners", ChessboardCorners, self.corner_callback)
         self.coord_pub = rospy.Publisher("/kinova_pick_place/goal_in_camera", PickAndPlaceGoalInCamera, queue_size=10)
+        self.arm_status_sub = rospy.Subscriber("/my_gen3_lite/arm_status", String, self.arm_status_callback)
+        self.eat_status_pub = rospy.Publisher("/ai_eat_status", String, queue_size=1, latch=True)
 
-
+        self.arm_status = None
         self.top_left = None
         self.top_right = None
         self.bottom_left = None
@@ -42,6 +44,10 @@ class ChessAINode:
         self.garbage_place = None
 
         self.rate = rospy.Rate(10)
+
+    def arm_status_callback(self, msg: String):
+        rospy.loginfo(f"接收到机械臂状态: {msg.data}")
+        self.arm_status = msg.data
 
     def corner_callback(self,msg):
         self.top_left = msg.top_left
@@ -88,9 +94,8 @@ class ChessAINode:
     def matrix_to_point(self, x_value, y_value):
         x = self.bottom_left.x + x_value/8*(self.bottom_right.x-self.bottom_left.x) + y_value/9*(self.top_left.x-self.bottom_left.x)
         y = self.bottom_left.y + x_value/8*(self.bottom_right.y-self.bottom_left.y) + y_value/9*(self.top_left.y-self.bottom_left.y)
-        z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
-        return Point(x=x, y=y, z=z)
-
+        # z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
+        return Point(x=x, y=y, z=0.025)
 
 
     def run(self):
@@ -108,10 +113,14 @@ class ChessAINode:
                 rospy.loginfo("AI thinking...")
                 ai_board,start,end = ai_move_from_matrix(self.current_board)
 
-                if ai_board is not None:
+                if ai_board is not None and self.arm_status is not None:
                     
                     if start and end:
                         if self.current_board[9-end[1]][end[0]] != '0':
+                            rospy.sleep(0.5)
+                            if self.arm_status != '0':
+                                self.rate.sleep()
+                                continue
                             rospy.loginfo("chess eating detected")
                             self.eat_turn += 1
                             msg0 = PickAndPlaceGoalInCamera()
@@ -120,19 +129,27 @@ class ChessAINode:
                             msg0.target_location_id_at_place = ""
                             msg0.place_position_in_camera = self.garbage_place
                             self.coord_pub.publish(msg0)
-                            rospy.sleep(20)  
+                            self.eat_status_pub.publish(String("BUSY"))
+                            rospy.loginfo("发布吃子状态: BUSY")
 
+                        rospy.sleep(0.5)
+                        if self.arm_status != '0':
+                            self.rate.sleep()
+                            continue  
                         msg1 = PickAndPlaceGoalInCamera()
                         msg1.object_id_at_pick = ""
                         msg1.pick_position_in_camera = self.matrix_to_point(start[0],start[1])
                         msg1.target_location_id_at_place = ""
-                        msg1.place_position_in_camera = self.matrix_to_point(end[0],end[1])
+                        msg1.place_position_in_camera = self.matrix_to_point(end[0],end[1])                                           
                         self.coord_pub.publish(msg1)
                         rospy.loginfo(f"AI move published: from {self.matrix_to_point(start[0],start[1])} to {self.matrix_to_point(end[0],end[1])}")
                         rospy.loginfo(f"AI move published: from {start[0],start[1]} to {end[0],end[1]}")
+                        self.eat_status_pub.publish(String("IDLE"))
+                        rospy.loginfo("发布吃子状态: IDLE")
                         self.current_board = ai_board.copy()  # 更新当前棋盘状态
                         self.last_board = ai_board.copy()
                         self.is_ai_turn = False
+
                     else:
                         rospy.logwarn("AI move could not be detected.")
                 else:

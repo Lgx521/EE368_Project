@@ -59,6 +59,7 @@ add_message_files(
   PickAndPlaceGoalInCamera.msg
   ChessboardCorners.msg
   ChessboardPixelCorners.msg
+  RegionMatrix.msg
 )
 
 generate_messages(

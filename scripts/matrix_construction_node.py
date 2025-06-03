@@ -7,7 +7,8 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from geometry_msgs.msg import Point
-from ee368_project.msg import ChessboardCorners
+from ee368_project.msg import ChessboardPixelCorners
+from ee368_project.msg import RegionMatrix 
 from ultralytics import YOLO
 
 # 棋子类别映射
@@ -25,7 +26,7 @@ CHESS_SYMBOLS = {
     "红车": 'r', "黑车": 'R',
     "红炮": 'c', "黑炮": 'C',
     "红兵": 'p', "黑卒": 'P',
-    -1: '0'
+    -1: f'{0}'
 }
 
 class ChessboardDetector:
@@ -35,7 +36,7 @@ class ChessboardDetector:
         # 参数配置
         self.model_path = rospy.get_param('~model_path', '/home/slam/catkin_workspace/src/ee368_project/scripts/runs/chess_piece/chess_piece_exp1/weights/best.pt')
         self.image_topic = rospy.get_param('~image_topic', '/camera/color/image_raw')
-        self.corners_topic = rospy.get_param('~corners_topic', '/chessboard_corners')
+        self.corners_topic = rospy.get_param('~corners_topic', '/chessboard_pixel_corners')
         
         # 初始化组件
         self.bridge = CvBridge()
@@ -44,9 +45,9 @@ class ChessboardDetector:
         self.model = YOLO(self.model_path)
         
         # 创建发布者和订阅者
-        self.board_pub = rospy.Publisher('/chess_board_matrix', String, queue_size=10)
+        self.board_pub = rospy.Publisher('/chess_board_matrix', RegionMatrix, queue_size=10)
         self.image_sub = rospy.Subscriber(self.image_topic, Image, self.image_callback)
-        self.corners_sub = rospy.Subscriber(self.corners_topic, ChessboardCorners, self.corners_callback)
+        self.corners_sub = rospy.Subscriber(self.corners_topic, ChessboardPixelCorners, self.corners_callback)
         
         self.rate = rospy.Rate(10)  # 10 Hz
         self.corners_received = False  # 标志位
@@ -56,7 +57,6 @@ class ChessboardDetector:
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             self.cv_image = cv_image  # 保存图像供检测使用
-            rospy.loginfo("接收到图像，尺寸: %dx%d", cv_image.shape[1], cv_image.shape[0])
         except CvBridgeError as e:
             rospy.logerr(f"图像转换失败: {str(e)}")
 
@@ -68,10 +68,10 @@ class ChessboardDetector:
         try:
             # 关键修复：显式提取每个点的x/y坐标
             self.latest_corners = [
-                (float(msg.top_left.x), float(msg.top_left.y)),  # 提取x,y分量
-                (float(msg.top_right.x), float(msg.top_right.y)),
-                (float(msg.bottom_left.x), float(msg.bottom_left.y)),
-                (float(msg.bottom_right.x), float(msg.bottom_right.y))
+                (float(msg.top_left_px.x), float(msg.top_left_px.y)),  # 提取x,y分量
+                (float(msg.top_right_px.x), float(msg.top_right_px.y)),
+                (float(msg.bottom_left_px.x), float(msg.bottom_left_px.y)),
+                (float(msg.bottom_right_px.x), float(msg.bottom_right_px.y))
             ]
             
             # 验证坐标类型
@@ -94,7 +94,7 @@ class ChessboardDetector:
             
         try:
             # 解包坐标（确保每个角点是(x,y)元组）
-            (tl_x, tl_y), (tr_x, tr_y), (bl_x, bl_y), (al_x, al_y) = self.latest_corners
+            (tl_x, tl_y), (tr_x, tr_y), (bl_x, bl_y), (br_x, br_y) = self.latest_corners
             
             # 确保数值类型
             tl_x = float(tl_x)
@@ -103,18 +103,40 @@ class ChessboardDetector:
             tr_y = float(tr_y)
             bl_x = float(bl_x)
             bl_y = float(bl_y)
+            br_x = float(br_x)
+            br_y = float(br_y)
+
             
             # 计算实际尺寸（单位：米）
-            width = math.hypot(tr_x - tl_x, tr_y - tl_y)
-            height = math.hypot(bl_y - tl_y, bl_x - tl_x)
+            width = (tr_y - tl_y + br_y - bl_y) / 2
+            height = (tl_x - bl_x + tr_x - br_x)/ 2
             
             # 标准棋盘规格（9列，10行）
             col_step = width / 8  # 9列需要8个间隔
             row_step = height / 9  # 10行需要9个间隔
             
-            rospy.loginfo(f"棋盘宽度: {width:.2f}m, 高度: {height:.2f}m")
-            rospy.loginfo(f"列间距: {col_step:.2f}m, 行间距: {row_step:.2f}m")
-            return (col_step, row_step)
+            rospy.loginfo(f"棋盘宽度: {width:.2f}pixel, 高度: {height:.2f}pixel")
+            rospy.loginfo(f"列间距: {col_step:.2f}pixel, 行间距: {row_step:.2f}pixel")
+            
+            regions = []
+            for row in range(10):  # 10行
+                for col in range(9):  # 9列
+                    # 关键修正：向负轴方向偏移半个间隔（确保中心对齐）
+                    y_offset = -col_step / 2  # X轴向左偏移半个间隔
+                    x_offset = row_step / 2  # Y轴向上偏移半个间隔
+                    
+                    y1 = bl_y + col * col_step + y_offset
+                    x1 = bl_x + row * row_step + x_offset
+                    y2 = y1 + col_step
+                    x2 = x1 - row_step
+                    
+                    region = {
+                        "top_left": (x1, y1),
+                        "bottom_right": (x2, y2),
+                        "center": ((x1 + x2) / 2, (y1 + y2) / 2)  # 交叉点作为中心
+                    }
+                    regions.append(region)
+            return regions
             
         except TypeError as e:
             rospy.logerr(f"类型错误: {str(e)}")
@@ -122,33 +144,6 @@ class ChessboardDetector:
         except Exception as e:
             rospy.logerr(f"计算失败: {str(e)}")
             return None
-
-    def split_into_regions(self):
-        """生成9x10个区域（确保坐标正确）"""
-        if self.latest_corners is None or self.grid_size is None:
-            return []
-        
-        try:
-            # 解包角点坐标（示例值，需根据实际数据调整）
-            (tl_x, tl_y), (_, _), (bl_x, bl_y), _ = self.latest_corners
-            col_step, row_step = self.grid_size
-            
-            # 强制转换为浮点数
-            tl_x, tl_y, col_step, row_step = map(float, [tl_x, tl_y, col_step, row_step])
-            
-            regions = []
-            for row in range(10):
-                for col in range(9):
-                    x1 = tl_x + col * col_step
-                    y1 = tl_y + row * row_step
-                    x2 = x1 + col_step
-                    y2 = y1 + row_step
-                    regions.append({
-                        "top_left": (x1, y1),
-                        "bottom_right": (x2, y2),
-                        "center": (x1 + col_step/2, y1 + row_step/2)
-                    })
-            return regions
         except Exception as e:
             rospy.logerr(f"区域划分失败: {str(e)}")
             return []
@@ -189,24 +184,22 @@ class ChessboardDetector:
         return detections
     
     def map_piece_to_region(self, piece_center, regions):
-        """将棋子中心点映射到区域索引（添加坐标校验）"""
-        for idx, region in enumerate(regions):
+        """将棋子中心点映射到区域索引（左下角为原点）"""
+        idx = -1
+        for i, region in enumerate(regions):
             tl_x, tl_y = region["top_left"]
             br_x, br_y = region["bottom_right"]
-            
-            # 校验坐标是否在棋盘范围内（单位：米）
-            if not (0 <= piece_center[0] <= 1.28 and 0 <= piece_center[1] <= 0.72):  # 假设棋盘尺寸1.28m×0.72m
-                rospy.logwarn(f"棋子坐标越界: {piece_center}")
-                return -1
                 
-            # 检查区域边界（含容差±5cm）
-            if (tl_x - 0.05 <= piece_center[0] <= br_x + 0.05) and (tl_y - 0.05 <= piece_center[1] <= br_y + 0.05):
-                return idx
-        return -1
+            # 检查区域边界（含容差±30pixels）
+            if (br_x - 10 <= piece_center[0] <= tl_x + 10 and 
+                tl_y - 10 <= piece_center[1] <= br_y + 10):
+                idx = i
+        return idx
 
     def generate_region_matrix(self, detections, regions):
-        """生成10x9的棋盘矩阵（添加调试信息）"""
-        matrix = np.full((10, 9), -1, dtype=int)
+        """生成10x9的棋盘矩阵（存储字符串）"""
+        # 修改 dtype 为 object 或 str，以便存储字符串
+        matrix = np.full((10, 9), -1, dtype=object) 
         
         for det in detections:
             piece_center = det["center"]
@@ -216,14 +209,19 @@ class ChessboardDetector:
                 # 打印映射结果
                 rospy.logdebug(f"棋子 {det['label']} 映射到区域 {region_idx}")
                 
-                row = region_idx // 9
-                col = region_idx % 9
-                matrix[row][col] = self.get_symbol(det["label"])
-            else:
-                rospy.logwarn(f"棋子 {det['label']} 未映射到任何区域")
+                # 关键修正：正确的行和列计算
+                row = 9 - (region_idx // 9)  # 行数是10，所以用//9
+                col = region_idx % 9   # 列数是9，所以用%9
                 
-        # 打印完整矩阵
-        rospy.loginfo(f"生成矩阵:{matrix}")
+                # 确保行和列在有效范围内
+                if 0 <= row < 10 and 0 <= col < 9:
+                    # 确保 self.get_symbol 返回的是字符串（如果返回数字，可以 str() 转换）
+                    symbol = self.get_symbol(det["label"])
+                    matrix[row][col] = symbol  # 现在可以存储字符串
+            else:
+                # 没有棋子：应该放置"0"（空位置）
+                # 但这里需要确认是否有逻辑覆盖
+                pass
         return matrix
 
     def get_symbol(self, label):
@@ -236,48 +234,54 @@ class ChessboardDetector:
             "红车": 'r', "黑车": 'R',
             "红炮": 'c', "黑炮": 'C',
             "红兵": 'p', "黑卒": 'P',
-            -1: f"{0}"  # 空位
+            -1: f'{0}'  # 空位
         }
         return symbol_map.get(label, 0)
 
+    def replace_spaces_with_zero(self, matrix):
+        """将矩阵中的空格 ' ' 替换为字符串 '0'"""
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                if matrix[i][j] == -1:  # 检查是否是空格
+                    matrix[i][j] = f'{0}'    # 直接替换为字符串 '0'
+        return matrix
+    
     def visualize_grid(self, image, regions):
-        """在图像上绘制棋盘网格和检测到的棋子"""
-        # 绘制网格线
-        for i in range(1, 9):  # 8条垂直线
-            x = regions[i*9]["top_left"][0]  # 每列的x坐标
-            cv2.line(image, (int(x), int(regions[0]["top_left"][1])), 
-                     (int(x), int(regions[-1]["bottom_right"][1])), (0, 255, 0), 1)
+        # 复制图像以避免修改原始图像
+        visualized_image = image.copy()
         
-        for i in range(1, 10):  # 9条水平线
-            y = regions[i]["top_left"][1]  # 每行的y坐标
-            cv2.line(image, (int(regions[0]["top_left"][0]), int(y)), 
-                     (int(regions[-1]["bottom_right"][0]), int(y)), (0, 255, 0), 1)
+        # 获取图像尺寸
+        height, width = visualized_image.shape[:2]
         
-        # 绘制检测到的棋子
-        for det in self.detections:
-            x, y = int(det["center"][0]), int(det["center"][1])
-            label = det["label"]
-            symbol = self.get_symbol(label)
-            
-            # 绘制棋子位置
-            cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
-            
-            # 在棋子位置显示符号
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.5
-            thickness = 1
-            text_size = cv2.getTextSize(symbol, font, font_scale, thickness)[0]
-            text_x = x - text_size[0] // 2
-            text_y = y + text_size[1] // 2
-            cv2.putText(image, symbol, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+        # 绘制水平线（行分隔线）
+        for row in range(1, 10):  # 10行，需要9条水平线
+            y = regions[row * 9]["center"][1]  # 每行的中心y坐标
+            cv2.line(visualized_image, (0, int(y)), (width, int(y)), (0, 255, 0), 1)
         
-        return image
-
+        # 绘制垂直线（列分隔线）
+        for col in range(1, 9):  # 9列，需要8条垂直线
+            x = regions[col]["center"][0]  # 每列的中心x坐标
+            cv2.line(visualized_image, (int(x), 0), (int(x), height), (0, 255, 0), 1)
+        
+        # 绘制区域编号（可选）
+        for row in range(10):
+            for col in range(9):
+                region_idx = row * 9 + col
+                if region_idx < len(regions):
+                    center_x, center_y = regions[region_idx]["center"]
+                    # 绘制区域编号
+                    cv2.putText(visualized_image, f"{region_idx}", 
+                                (int(center_x) - 5, int(center_y) + 5), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)
+        return visualized_image
+    
     def publish_region_matrix(self, matrix):
         """发布区域状态矩阵"""
         try:
-            matrix_str = " ".join([" ".join(map(str, row)) for row in matrix])
-            self.board_pub.publish(String(data=matrix_str))
+            msg = RegionMatrix()
+            msg.header.stamp = rospy.Time.now()
+            msg.data = '\n'.join([" ".join(map(str, row)) for row in matrix])
+            self.board_pub.publish(msg)
             rospy.loginfo("Published region matrix")
         except Exception as e:
             rospy.logerr(f"发布区域矩阵失败: {str(e)}")
@@ -295,24 +299,25 @@ class ChessboardDetector:
                 cv_image = self.bridge.imgmsg_to_cv2(rospy.wait_for_message(self.image_topic, Image), "bgr8")
                 
                 # 生成区域划分（基于首次接收的角点数据）
-                regions = self.split_into_regions()
-
+                regions = self.calculate_grid_size()
+                
                 # 检测棋子
                 detections = self.detect_pieces(cv_image)
-                self.detections = detections  # 保存检测结果用于可视化
-
+                
                 # 生成区域矩阵
                 region_matrix = self.generate_region_matrix(detections, regions)
-
+                final_matrix = self.replace_spaces_with_zero(region_matrix)
+                
                 # 可视化网格和棋子
                 visualized_image = self.visualize_grid(cv_image.copy(), regions)
                 
                 # 显示可视化图像（可选，用于调试）
+                rospy.loginfo(f"生成矩阵:\n{final_matrix}")
                 cv2.imshow("Chessboard Detection", visualized_image)
                 cv2.waitKey(1)
                 
                 # 发布结果
-                self.publish_region_matrix(region_matrix)
+                self.publish_region_matrix(final_matrix)
 
             except Exception as e:
                 rospy.logerr(f"运行时错误: {str(e)}")

@@ -34,7 +34,7 @@ class ChessboardDetector:
         rospy.init_node('chessboard_detector', anonymous=True)
         
         # 参数配置
-        self.model_path = rospy.get_param('~model_path', '/home/slam/catkin_workspace/src/ee368_project/scripts/runs/chess_piece/chess_piece_exp1/weights/best.pt')
+        self.model_path = rospy.get_param('~model_path', './src/ee368_project/scripts/runs/chess_piece/chess_piece_exp1/weights/best.pt')
         self.image_topic = rospy.get_param('~image_topic', '/camera/color/image_raw')
         self.corners_topic = rospy.get_param('~corners_topic', '/chessboard_pixel_corners')
         

@@ -157,7 +157,7 @@ class ChessAINode:
         x = self.bottom_left.x + x_value/8*(self.bottom_right.x-self.bottom_left.x) + y_value/9*(self.top_left.x-self.bottom_left.x)
         y = self.bottom_left.y + x_value/8*(self.bottom_right.y-self.bottom_left.y) + y_value/9*(self.top_left.y-self.bottom_left.y)
         # z = self.bottom_left.z + x_value/8*(self.bottom_right.z-self.bottom_left.z) + y_value/9*(self.top_left.z-self.bottom_left.z)
-        return Point(x=x, y=y, z=0.025)
+        return Point(x=x+0.015, y=y, z=0.38)
 
 
     def run(self):

@@ -18,14 +18,13 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 class KinovaCubicTrajectoryExecutor:
     def __init__(self):
-        rospy.init_node('kinova_cubic_trajectory_executor')
+        # rospy.init_node('kinova_cubic_trajectory_executor')
 
         # --- Parameters ---
         # Action server name for FollowJointTrajectory
-        self.arm_joint_trajectory_action_name = rospy.get_param(
-            "~arm_joint_trajectory_action_name",
-            "/my_gen3_lite/gen3_joint_trajectory_controller/follow_joint_trajectory" # MODIFY THIS if different
-        )
+        self.arm_joint_trajectory_action_name = '/my_gen3_lite/gen3_lite_joint_trajectory_controller/follow_joint_trajectory'
+        
+
         # Topic for current joint states
         self.joint_states_topic = rospy.get_param(
             "~joint_states_topic",
@@ -75,16 +74,6 @@ class KinovaCubicTrajectoryExecutor:
                 self.joint_limits_rad = None
         else:
             rospy.loginfo("No joint limits provided for IK. IK might produce out-of-range solutions.")
-            # You might want to hardcode default approximate limits if not provided
-            # self.joint_limits_rad = [
-            #     [-np.deg2rad(360), np.deg2rad(360)], # Joint 1 (example, Kinova is continuous or large range)
-            #     [-np.deg2rad(128.8), np.deg2rad(128.8)], # Joint 2
-            #     [-np.deg2rad(360), np.deg2rad(360)], # Joint 3
-            #     [-np.deg2rad(147.8), np.deg2rad(147.8)], # Joint 4
-            #     [-np.deg2rad(360), np.deg2rad(360)], # Joint 5
-            #     [-np.deg2rad(120.3), np.deg2rad(120.3)]  # Joint 6
-            # ]
-            # rospy.loginfo(f"Using default approximate joint limits for IK: {self.joint_limits_rad}")
 
 
     def joint_states_callback(self, msg):
@@ -217,7 +206,7 @@ class KinovaCubicTrajectoryExecutor:
             q_initial, # Using current angles as initial guess
             self.dh_params,
             joint_limits=self.joint_limits_rad,
-            pos_weight=10.0, # Higher weight for position
+            pos_weight=8.0, # Higher weight for position
             ori_weight=1.0,
             pos_tolerance=1e-3, # Looser tolerance for faster planning for demo
             ori_tolerance=1e-2,
@@ -260,13 +249,6 @@ class KinovaCubicTrajectoryExecutor:
         goal.trajectory.points = trajectory_points
         goal.trajectory.header.stamp = rospy.Time.now() + rospy.Duration(0.2) # Start shortly after sending
 
-        # Path and goal tolerances (optional, but good practice)
-        # If the controller deviates too much, it might abort
-        # Set to zero or empty list [] to use controller defaults
-        # goal.path_tolerance = []
-        # goal.goal_tolerance = []
-        # goal.goal_time_tolerance = rospy.Duration(0.5)
-
 
         # 5. Send Goal to Action Server
         rospy.loginfo("Sending trajectory goal to action server...")
@@ -305,8 +287,8 @@ if __name__ == "__main__":
 
         # --- Define Target Pose 1 ---
         # MODIFY THESE VALUES FOR YOUR DESIRED TARGET
-        target_pos1 = np.array([0.4, 0.1, 0.3])      # meters [x, y, z]
-        target_ori_euler1 = np.array([np.pi, 0, np.pi/4]) # radians [roll, pitch, yaw]
+        target_pos1 = np.array([0.3, 0.1, 0.25])      # meters [x, y, z]
+        target_ori_euler1 = np.array([0, np.pi, np.pi/4]) # radians [roll, pitch, yaw]
         # Note: Euler angles can have singularities. Quaternions are often preferred for targets.
         # Your IK uses matrices, so this is fine.
 
@@ -319,8 +301,8 @@ if __name__ == "__main__":
         rospy.sleep(1.0) # Pause between movements
 
         # --- Define Target Pose 2 (e.g., a different orientation or position) ---
-        target_pos2 = np.array([0.3, -0.2, 0.4])
-        target_ori_euler2 = np.array([np.pi*0.8, np.pi*0.1, -np.pi/3])
+        target_pos2 = np.array([0.3, 0.1, 0.3])
+        target_ori_euler2 = np.array([0, np.pi, np.pi/4])
 
         rospy.loginfo("\n" + "="*30 + "\nMOVING TO TARGET 2\n" + "="*30)
         if executor.plan_and_execute_to_pose(target_pos2, target_ori_euler2, trajectory_duration=8.0):

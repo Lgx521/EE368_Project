@@ -75,7 +75,7 @@ def inverse_kinematics_optimizer(
     joint_limits=None, # [[min1,max1], [min2,max2], ...]
     pos_weight=5.0,
     ori_weight=1.0,
-    pos_tolerance=1e-5, # 用于检查最终解的容差
+    pos_tolerance=1e-4, # 用于检查最终解的容差
     ori_tolerance=1e-4, # 用于检查最终解的容差 (旋转向量范数)
     max_iterations=200,
     optimizer_ftol=1e-7 # 优化器的收敛容差 (目标函数值的变化)

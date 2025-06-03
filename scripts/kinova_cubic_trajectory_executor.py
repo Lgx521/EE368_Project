@@ -24,12 +24,12 @@ class KinovaCubicTrajectoryExecutor:
         # Action server name for FollowJointTrajectory
         self.arm_joint_trajectory_action_name = rospy.get_param(
             "~arm_joint_trajectory_action_name",
-            "/my_gen3/gen3_joint_trajectory_controller/follow_joint_trajectory" # MODIFY THIS if different
+            "/my_gen3_lite/gen3_joint_trajectory_controller/follow_joint_trajectory" # MODIFY THIS if different
         )
         # Topic for current joint states
         self.joint_states_topic = rospy.get_param(
             "~joint_states_topic",
-            "/my_gen3/joint_states" # MODIFY THIS if different (e.g., /my_gen3/base_feedback for Kortex API direct messages)
+            "/my_gen3_lite/joint_states" # MODIFY THIS if different (e.g., /my_gen3/base_feedback for Kortex API direct messages)
         )
         # Number of joints (should match your DH parameters)
         self.num_joints = ik.num_joints

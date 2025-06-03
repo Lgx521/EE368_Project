@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # 优化器内部会处理归一化或使用归一化后的初始值
     print("-" * 30)
 
-    example_joint_limits = None # 测试时不使用严格限制
+    example_joint_limits = None
 
     # 3. 调用IK求解器
     solution_q, converged, pos_err, ori_err = inverse_kinematics_optimizer(
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         dh_parameters,
         joint_limits=example_joint_limits,
         pos_weight=5.0,       # 位置误差的权重
-        ori_weight=1.0,       # 姿态误差的权重 (可以调整，例如如果姿态更重要，给更大权重)
+        ori_weight=1.0,       # 姿态误差的权重
         pos_tolerance=1e-4,
         ori_tolerance=1e-4,
         max_iterations=300,  # 优化器的最大迭代次数

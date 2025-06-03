@@ -5,40 +5,27 @@ from scipy.optimize import minimize
 
 # --- D-H 参数 ---
 # 标准D-H参数: [alpha_{i-1}, a_{i-1}, d_i, theta_offset_i]
-# 假设一个更常规的6轴机械臂结构 (修改了alpha_2)
 dh_parameters = [
     [0,    0,      0.2433, 0    ],
     [pi/2, 0,      0.03,   pi/2 ],
-    [pi,    0.28,   0.02,  pi/2 ], 
+    [pi,    0.28,  0.02,   pi/2 ], 
     [pi/2, 0,      0.245,  pi/2 ],
     [pi/2, 0,      0.057,  pi   ],
     [pi/2, 0,      0.235,  pi/2 ]
 ]
 
-# 可选：关节限制 (弧度)
-# 示例，你需要根据你的机械臂调整
 num_joints = len(dh_parameters)
-# joint_limits_rad = [ # [[min1,max1], [min2,max2], ...]
-#     [-np.pi, np.pi],
-#     [-np.pi/2, np.pi/2],
-#     [-np.pi, np.pi],
-#     [-np.pi, np.pi],
-#     [-np.pi, np.pi],
-#     [-np.pi, np.pi]
-# ]
-# 为了演示，我们先不使用严格的关节限制，或使用较宽松的限制
-# 如果你的机械臂有严格的限制，请务必填写正确
+
 joint_limits_rad = None # 或者定义如下
-# joint_limits_rad = [[-2*pi, 2*pi]] * num_joints # 比较宽松的示例
 
 def dh_transform_matrix(alpha, a, d, theta):
-    A = np.array([
+    T = np.array([
         [np.cos(theta), -np.sin(theta), 0, a],
         [np.sin(theta)*np.cos(alpha),  np.cos(theta)*np.cos(alpha), -np.sin(alpha), -np.sin(alpha)*d],
         [np.sin(theta)*np.sin(alpha),  np.cos(theta)*np.sin(alpha), np.cos(alpha),   np.cos(alpha) * d],
         [0,              0,                           0,                          1]
     ])
-    return A
+    return T
 
 def forward_kinematics(q, dh_params_table):
     T_cumulative = np.eye(4)
@@ -63,7 +50,6 @@ def get_pose_error(T_target, T_current):
     return np.hstack((pos_error, orientation_error_rotvec)).reshape(6, 1)
 
 # --- 基于 SciPy Optimize 的逆运动学求解器 ---
-
 def objective_function(q, target_pose_matrix, dh_params, pos_weight, ori_weight):
     """
     目标函数：最小化末端位姿误差的加权范数平方。
@@ -78,14 +64,7 @@ def objective_function(q, target_pose_matrix, dh_params, pos_weight, ori_weight)
     
     pos_error_sq_norm = np.linalg.norm(error_vec[:3])**2
     ori_error_sq_norm = np.linalg.norm(error_vec[3:])**2
-    
-    # 归一化角度，确保q在优化过程中保持在 [-pi, pi] 附近，有助于稳定性
-    # 虽然SLSQP等优化器理论上不需要，但有时对目标函数的平滑性有好处
-    # q_normalized = np.array([np.arctan2(np.sin(val), np.cos(val)) for val in q])
-    # T_current_norm, _ = forward_kinematics(q_normalized, dh_params)
-    # error_vec_norm = get_pose_error(target_pose_matrix, T_current_norm)
-    # pos_error_sq_norm = np.linalg.norm(error_vec_norm[:3])**2
-    # ori_error_sq_norm = np.linalg.norm(error_vec_norm[3:])**2
+
     
     return pos_weight * pos_error_sq_norm + ori_weight * ori_error_sq_norm
 
@@ -94,7 +73,7 @@ def inverse_kinematics_optimizer(
     initial_q,
     dh_params_table,
     joint_limits=None, # [[min1,max1], [min2,max2], ...]
-    pos_weight=1.0,
+    pos_weight=5.0,
     ori_weight=1.0,
     pos_tolerance=1e-5, # 用于检查最终解的容差
     ori_tolerance=1e-4, # 用于检查最终解的容差 (旋转向量范数)
@@ -164,7 +143,7 @@ if __name__ == "__main__":
     print("6-DoF Inverse Kinematics SciPy Optimizer Solver\n")
 
     # 1. 定义目标位姿
-    target_position = np.array([0.3, 0.1, 0.3]) # meters
+    target_position = np.array([0.3, 0.1, 0.25]) # meters
     target_orientation_euler = np.array([0, pi, pi/4]) # radians (roll, pitch, yaw)
     
     target_rotation_matrix = R.from_euler('xyz', target_orientation_euler, degrees=False).as_matrix()
@@ -184,18 +163,9 @@ if __name__ == "__main__":
     # 优化器内部会处理归一化或使用归一化后的初始值
     print("-" * 30)
 
-    # 3. (可选) 定义关节限制 - 如果你的机械臂有关节限制，请在这里设置
-    # example_joint_limits = [
-    #     [-2.9, 2.9],  # Joint 1 (approx +-166 deg)
-    #     [-1.57, 1.57],# Joint 2 (+-90 deg)
-    #     [-2.7, 2.7],  # Joint 3
-    #     [-3.0, 3.0],  # Joint 4
-    #     [-2.0, 2.0],  # Joint 5
-    #     [-6.0, 6.0]   # Joint 6 (can often rotate more)
-    # ]
     example_joint_limits = None # 测试时不使用严格限制
 
-    # 4. 调用IK求解器
+    # 3. 调用IK求解器
     solution_q, converged, pos_err, ori_err = inverse_kinematics_optimizer(
         T_target,
         initial_joint_angles_rad,

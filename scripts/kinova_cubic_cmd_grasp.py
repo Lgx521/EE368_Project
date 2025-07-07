@@ -109,7 +109,7 @@ class KinovaCubicCmdGrasp:
         # --- Gripper Orientation (Fixed for Pick/Place) ---
         # Euler angles [roll, pitch, yaw] in degrees, relative to robot base
         self.fixed_gripper_orientation_base_deg = np.array(rospy.get_param(
-            '~fixed_gripper_orientation_base_deg', [0.0, 180.0, 0.0]
+            '~fixed_gripper_orientation_base_deg', [0.0, 180.0, 135.0]
         ))
         self.fixed_gripper_orientation_base_rad = np.deg2rad(self.fixed_gripper_orientation_base_deg)
         rospy.loginfo(f"Using fixed gripper orientation (Euler XYZ rad, base frame): {self.fixed_gripper_orientation_base_rad}")
@@ -126,7 +126,7 @@ class KinovaCubicCmdGrasp:
 
         # --- Home Pose Definition (Cartesian) ---
         # Define a "home" in joint space, then find its Cartesian equivalent
-        q_home_joints_rad = np.array(rospy.get_param('~home_joint_angles_deg', [30.66, 346.57, 72.23, 270.08, 265.45, 345.69])) * np.pi / 180.0
+        q_home_joints_rad = np.array([0.5351422473432473, -0.23828261010931406, 1.4596812566335204, -1.5698040329727325, -1.4464144533471819, -0.2506183722785611])
         if len(q_home_joints_rad) != self.num_joints:
             rospy.logwarn(f"Provided home_joint_angles_deg length mismatch. Using all zeros.")
             q_home_joints_rad = np.zeros(self.num_joints)
@@ -230,13 +230,13 @@ class KinovaCubicCmdGrasp:
         rospy.loginfo(f"Commanding gripper to {open_percentage*100:.0f}%...")
         # The gripper controller might need specific values (e.g. 0-1, or 0-100)
         # Adjust if your move_gripper expects something else
-        success = self.gripper_controller.move_gripper(open_percentage) 
+        success = self.gripper_controller.move_gripper(1-open_percentage) 
         if not success:
             rospy.logwarn("Gripper command failed.")
         rospy.sleep(1.5) # Allow time for gripper to act
         return success
 
-    def _perform_action_sequence(self, action_name, target_xyz_base, z_offset_specific, is_pick_action, move_duration=5.0):
+    def _perform_action_sequence(self, action_name, target_xyz_base, z_offset_specific, is_pick_action, move_duration=3.5):
         rospy.loginfo(f"--- Starting {action_name} sequence ---")
         
         # Target pose for the actual action (pick/place)
@@ -280,7 +280,7 @@ class KinovaCubicCmdGrasp:
         if self.is_gripper_ready:
             if is_pick_action:
                 rospy.loginfo(f"Step 4 ({action_name}): Closing gripper to grasp...")
-                grasp_val = rospy.get_param("~gripper_grasp_closure_percentage", 0.1) # e.g. 10% (quite closed)
+                grasp_val = rospy.get_param("~gripper_grasp_closure_percentage", 0.25) # e.g. 10% (quite closed)
                 if not self._perform_gripper_action(grasp_val):
                     rospy.logwarn(f"Failed to close gripper for {action_name}. Object may not be grasped.")
                     # Decide if this is a fatal error for the sequence
@@ -339,7 +339,7 @@ class KinovaCubicCmdGrasp:
             target_xyz_base=pick_point_base_xyz,
             z_offset_specific=self.pick_z_offset_meters,
             is_pick_action=True,
-            move_duration=rospy.get_param("~pick_move_duration", 6.0)
+            move_duration=5
         )
 
         if not pick_successful:
@@ -353,7 +353,7 @@ class KinovaCubicCmdGrasp:
             target_xyz_base=place_point_base_xyz,
             z_offset_specific=self.place_z_offset_meters,
             is_pick_action=False, # This is a place action
-            move_duration=rospy.get_param("~place_move_duration", 7.0)
+            move_duration=5
         )
 
         if not place_successful:
